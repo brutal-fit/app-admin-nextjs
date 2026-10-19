@@ -12,10 +12,10 @@ trainers sign in to the Flutter app. One person can be both.
 
 ## Repo rules
 
-- Branches `main` and `dev`; work and checkpoint commits on `dev`. Checked-out branch only; no
-  worktrees, no new branches unless the owner asks. Commits proposed to the owner and made
-  after a yes (or under a standing instruction to commit and push); no `Co-Authored-By` or
-  other trailers; never push unless asked.
+- Branches `main` and `dev` (since 2026-10-19); work and checkpoint commits on `dev`.
+  Checked-out branch only; no worktrees, no new branches unless the owner asks. Commits at
+  logical checkpoints without asking (owner, 2026-10-19); no `Co-Authored-By` or other
+  trailers; push only on the owner's confirmation.
 - Owner instructions given during a session are recorded in `../memory/instructions.md`.
 - Changes under `src/`, `middleware.ts`, `next.config.*`, `package.json` dependencies and
   `public/` go to the `developer` agent with a handoff package. The Architect edits this file,

@@ -5,7 +5,7 @@ Prioritised. Status: todo, in progress, done (with date and handoff dir or commi
 | ID | Item | Status |
 |---|---|---|
 | AD-01 | Scaffold: Next.js 16.4, TypeScript, Tailwind v4, Zustand, Supabase auth, layout, permission registry, roles and users pages, dev server on 3100; shadcn/ui and react-feather | done 2026-10-19 (tasks 04, 10, 11) |
-| AD-02 | Verify sign-in and role management against the hosted project once the RBAC migration is applied; generated database types via `npx supabase gen types` | todo, after the hosted apply |
+| AD-02 | Sign-in verified against the hosted project on 2026-10-19 (`my_access` returns super_admin for the first admin); role management still to be exercised in the browser; generated database types via `npx supabase gen types` | in progress |
 | AD-03 | Applications and documents review (signed URLs, platform price), using `review_document` and `review_application` | todo |
 | AD-04 | Support cases and reports | todo |
 | AD-05 | Audit log viewer (`private.admin_audit_log` through a function) | todo |
