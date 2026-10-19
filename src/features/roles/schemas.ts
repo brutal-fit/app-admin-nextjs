@@ -3,8 +3,14 @@ import { isPermissionKey, type PermissionKey } from "@/lib/rbac/permissions";
 
 export const ROLE_KEY_PATTERN = /^[a-z][a-z0-9_]{2,40}$/;
 
-const roleName = z.string().trim().min(2, "Name needs at least 2 characters.").max(80);
-const roleDescription = z.string().trim().max(500, "Keep the description under 500 characters.");
+// Limits mirror the roles table checks (name 2..60, description <= 300) so a long value
+// fails here with a message instead of as a check violation from the database.
+const roleName = z
+  .string()
+  .trim()
+  .min(2, "Name needs at least 2 characters.")
+  .max(60, "Keep the name to 60 characters or fewer.");
+const roleDescription = z.string().trim().max(300, "Keep the description under 300 characters.");
 const roleId = z.guid("Unknown role.");
 // Holding a role with this flag admits the user to the panel; new roles default to it.
 const roleIsAdmin = z.boolean();

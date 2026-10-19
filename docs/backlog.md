@@ -4,10 +4,11 @@ Prioritised. Status: todo, in progress, done (with date and handoff dir or commi
 
 | ID | Item | Status |
 |---|---|---|
-| AD-01 | Scaffold: Next.js, TypeScript, Tailwind v4, Zustand, Supabase auth, layout, permission registry, roles and users pages, dev server on 3100 | in progress, `../memory/.claude/handoffs/2026-10-19-e2e-and-admin/task-04.md` |
-| AD-02 | Wire to the RBAC migration once applied; generated database types | todo, after the backend RBAC package |
+| AD-01 | Scaffold: Next.js 16.4, TypeScript, Tailwind v4, Zustand, Supabase auth, layout, permission registry, roles and users pages, dev server on 3100; shadcn/ui and react-feather | done 2026-10-19 (tasks 04, 10, 11) |
+| AD-02 | Verify sign-in and role management against the hosted project once the RBAC migration is applied; generated database types via `npx supabase gen types` | todo, after the hosted apply |
 | AD-03 | Applications and documents review (signed URLs, platform price), using `review_document` and `review_application` | todo |
 | AD-04 | Support cases and reports | todo |
 | AD-05 | Audit log viewer (`private.admin_audit_log` through a function) | todo |
-| AD-06 | Vitest: registry matches the `permissions` table; `can()` helpers; error mapping | todo |
+| AD-06 | Vitest: registry matches the seeded permissions; `can()` helpers; error mapping; render tests for the five screens; form limits and group fix | in progress, task-12 |
+| AD-08 | Create a `dev` branch to match the other repos (owner's call; work sits on `main`) | todo, owner |
 | AD-07 | Deployment target (Vercel or similar) and the production env | todo, owner decision |

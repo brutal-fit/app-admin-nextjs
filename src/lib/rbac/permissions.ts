@@ -73,7 +73,7 @@ export const PERMISSIONS = [
   },
   {
     key: "documents.review",
-    group: "documents",
+    group: "applications",
     name: "Review documents",
     routes: [],
     apis: [],

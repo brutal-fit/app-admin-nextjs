@@ -65,7 +65,7 @@ function fixes the matching row in the same change.
 | `rbac.manage` | rbac | `/roles`, `/roles/[id]` | | create-role-dialog, role-form, permission-grid, delete-role-button |
 | `users.read` | users | `/users`, `/users/[id]` | | user-search |
 | `users.manage` | users | | `/api/users/create` | user-roles-panel, grant-trainer-access, create-user-dialog |
-| `applications.read`, `applications.review`, `documents.review`, `support.read`, `support.manage`, `bookings.read`, `reviews.moderate`, `audit.read` | their own | none yet (AD-03 to AD-05) | | |
+| `applications.read`, `applications.review`, `documents.review`, `support.read`, `support.manage`, `bookings.read`, `reviews.moderate`, `audit.read` | their own (`documents.review` is in `applications`, as seeded) | none yet (AD-03 to AD-05) | | |
 
 ## Data layer (`src/lib/db/rbac.ts`)
 
