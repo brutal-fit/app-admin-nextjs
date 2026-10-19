@@ -3,7 +3,22 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "motion/react";
-import { FileText, Grid, Shield, Users, type Icon } from "@/components/icons";
+import {
+  Activity,
+  BarChart2,
+  Bell,
+  Calendar,
+  FileText,
+  Grid,
+  LifeBuoy,
+  List,
+  Settings,
+  Shield,
+  Star,
+  UserCheck,
+  Users,
+  type Icon,
+} from "@/components/icons";
 import { usePrefersReducedMotion } from "@/components/motion/use-reduced-motion";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +30,15 @@ const NAV_ICONS: Record<string, Icon> = {
   "/roles": Shield,
   "/users": Users,
   "/applications": FileText,
+  "/trainers": UserCheck,
+  "/support": LifeBuoy,
+  "/bookings": Calendar,
+  "/reviews": Star,
+  "/catalogue": List,
+  "/settings": Settings,
+  "/announcements": Bell,
+  "/audit": Activity,
+  "/analytics": BarChart2,
 };
 
 // "g" then this letter opens the page (src/lib/shortcuts.ts); shown as a hint in the sidebar.

@@ -2,18 +2,27 @@ import { PageHeader } from "@/components/layout/page-header";
 import { StatusPulse } from "@/components/motion/status-pulse";
 import { Can } from "@/components/rbac/can";
 import { Badge } from "@/components/ui/badge";
+import { AccountStatusControl } from "@/features/users/components/account-status-control";
 import { GrantTrainerAccess } from "@/features/users/components/grant-trainer-access";
+import { PasswordResetButton } from "@/features/users/components/password-reset-button";
+import { UserAuditList } from "@/features/users/components/user-audit-list";
+import { UserOverview } from "@/features/users/components/user-overview";
+import { UserPrivacyRequests } from "@/features/users/components/user-privacy-requests";
 import { UserRolesPanel, type AssignedRole } from "@/features/users/components/user-roles-panel";
-import { getUser, listRoles, listUserRoleGrants } from "@/lib/db/rbac";
+import { accountStatusTone, missingPermissionMessage, suspendBlockedReason } from "@/features/users/format";
+import { listRoles, listUserRoleGrants } from "@/lib/db/rbac";
+import { getUserDetail } from "@/lib/db/users";
+import { can } from "@/lib/rbac/can";
 import { requireRoutePermission } from "@/lib/rbac/require-permission";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { toAppError } from "@/lib/supabase/errors";
+import { SERVICE_ROLE_MISSING_MESSAGE, toAppError } from "@/lib/supabase/errors";
+import { isServiceRoleConfigured } from "@/server/service-client";
 
 async function loadUser(userId: string) {
   try {
     const supabase = await createSupabaseServerClient();
-    const [user, grants, roles] = await Promise.all([
-      getUser(supabase, userId),
+    const [detail, grants, roles] = await Promise.all([
+      getUserDetail(supabase, userId),
       listUserRoleGrants(supabase, userId),
       listRoles(supabase),
     ]);
@@ -29,7 +38,7 @@ async function loadUser(userId: string) {
       };
     });
     const available = roles.map((role) => ({ id: role.id, name: role.name, key: role.key }));
-    return { ok: true as const, user, assigned, available };
+    return { ok: true as const, detail, assigned, available };
   } catch (error) {
     return { ok: false as const, error: toAppError(error).message };
   }
@@ -37,12 +46,8 @@ async function loadUser(userId: string) {
 
 const BACK = { href: "/users", label: "Back to users" };
 
-function statusTone(status: "active" | "suspended"): string {
-  return status === "active" ? "border-success text-success" : "border-destructive text-destructive";
-}
-
 export default async function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireRoutePermission("/users/[id]");
+  const access = await requireRoutePermission("/users/[id]");
   const { id } = await params;
   const result = await loadUser(id);
 
@@ -57,31 +62,76 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
     );
   }
 
-  const { user, assigned, available } = result;
+  const { detail, assigned, available } = result;
+  const name = detail.full_name?.trim() || detail.username || "Unnamed";
+  const canSuspend = can(access.permissions, "users.suspend");
+  const canManage = can(access.permissions, "users.manage");
+  const resetBlocked = !isServiceRoleConfigured()
+    ? SERVICE_ROLE_MISSING_MESSAGE
+    : detail.email
+      ? null
+      : "This account has no email address.";
 
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
         eyebrow="User"
-        title={user.full_name || "Unnamed"}
+        title={name}
         back={BACK}
         status={
-          <StatusPulse value={user.account_status} className={statusTone(user.account_status)}>
-            <Badge variant="outline" className={statusTone(user.account_status)}>
-              {user.account_status}
+          <StatusPulse value={detail.account_status} className={accountStatusTone(detail.account_status)}>
+            <Badge variant="outline" className={accountStatusTone(detail.account_status)}>
+              {detail.account_status}
             </Badge>
           </StatusPulse>
         }
       >
         <dl className="grid max-w-xl grid-cols-[auto_1fr] gap-x-6 gap-y-1 rounded-xl border bg-card p-4 text-sm shadow-tile">
           <dt className="text-muted-foreground">Email</dt>
-          <dd>{user.email ?? "No email"}</dd>
+          <dd>{detail.email ?? "No email"}</dd>
+          <dt className="text-muted-foreground">Username</dt>
+          <dd>{detail.username ? `@${detail.username}` : "None"}</dd>
           <dt className="text-muted-foreground">App role</dt>
-          <dd>{user.platform_role ?? "None"}</dd>
+          <dd>{detail.platform_role ?? "None"}</dd>
           <dt className="text-muted-foreground">Joined</dt>
-          <dd>{new Date(user.created_at).toLocaleDateString("en-IN")}</dd>
+          <dd>{new Date(detail.created_at).toLocaleDateString("en-IN")}</dd>
         </dl>
       </PageHeader>
+
+      <section aria-labelledby="user-account" className="flex max-w-3xl flex-col gap-3">
+        <h2 id="user-account" className="text-lg font-semibold">
+          Account
+        </h2>
+        <div className="flex flex-wrap items-start gap-6">
+          {canSuspend ? (
+            <AccountStatusControl
+              // Keyed on the stored status so the control starts fresh after each change.
+              key={detail.account_status}
+              userId={detail.id}
+              userName={name}
+              status={detail.account_status}
+              blockedReason={suspendBlockedReason({
+                targetId: detail.id,
+                sessionUserId: access.userId,
+                targetRoleKeys: detail.roles,
+              })}
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {missingPermissionMessage("users.suspend", "Suspending or reinstating")}
+            </p>
+          )}
+          {canManage ? (
+            <PasswordResetButton userId={detail.id} email={detail.email ?? null} disabledReason={resetBlocked} />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {missingPermissionMessage("users.manage", "Sending a password reset email")}
+            </p>
+          )}
+        </div>
+      </section>
+
+      <UserOverview detail={detail} permissions={access.permissions} />
 
       <section aria-labelledby="user-roles" className="flex max-w-2xl flex-col gap-4">
         <h2 id="user-roles" className="text-lg font-semibold">
@@ -97,7 +147,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
             </p>
           }
         >
-          <UserRolesPanel userId={user.id} assigned={assigned} available={available} />
+          <UserRolesPanel userId={detail.id} assigned={assigned} available={available} />
         </Can>
       </section>
 
@@ -106,9 +156,16 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
           <h2 id="user-app-access" className="text-lg font-semibold">
             App access
           </h2>
-          <GrantTrainerAccess userId={user.id} platformRole={user.platform_role} />
+          <GrantTrainerAccess userId={detail.id} platformRole={detail.platform_role ?? null} />
         </section>
       </Can>
+
+      <UserPrivacyRequests
+        requests={detail.privacy_requests}
+        canProcess={can(access.permissions, "privacy.process")}
+      />
+
+      <UserAuditList userId={detail.id} entries={detail.recent_audit} permissions={access.permissions} />
     </div>
   );
 }

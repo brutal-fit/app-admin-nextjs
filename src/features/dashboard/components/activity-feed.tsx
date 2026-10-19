@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Activity } from "@/components/icons";
+import { Activity, ArrowRight } from "@/components/icons";
 import { StaggerItem, StaggerList } from "@/components/motion/stagger-list";
 import { formatDateTime } from "@/features/applications/format";
 import type { ActivityResult } from "@/features/dashboard/api";
@@ -23,11 +23,23 @@ export function ActivityFeed({ result }: { result: ActivityResult }) {
       aria-labelledby="dashboard-activity"
       className="flex flex-col gap-4 rounded-xl border bg-card p-5 shadow-tile"
     >
-      <div className="flex flex-col gap-0.5">
-        <h2 id="dashboard-activity" className="text-base font-semibold">
-          Activity
-        </h2>
-        <p className="text-xs text-muted-foreground">Latest admin actions, newest first.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-col gap-0.5">
+          <h2 id="dashboard-activity" className="text-base font-semibold">
+            Activity
+          </h2>
+          <p className="text-xs text-muted-foreground">Latest admin actions, newest first.</p>
+        </div>
+        {/* "ok" and "error" both mean the session holds audit.read, the audit page's key. */}
+        {result.kind === "ok" || result.kind === "error" ? (
+          <Link
+            href="/audit"
+            className="focus-ring inline-flex items-center gap-1 rounded-sm text-sm font-medium underline-offset-4 hover:underline"
+          >
+            Full audit log
+            <ArrowRight size={14} aria-hidden="true" />
+          </Link>
+        ) : null}
       </div>
 
       {result.kind === "hidden" ? (

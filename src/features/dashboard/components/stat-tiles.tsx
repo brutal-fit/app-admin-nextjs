@@ -1,9 +1,11 @@
 import Link from "next/link";
 import {
+  AlertCircle,
   ArrowRight,
   Calendar,
   Clock,
   FileText,
+  Flag,
   LifeBuoy,
   UserPlus,
   Users,
@@ -15,11 +17,13 @@ import { cn } from "@/lib/utils";
 import type { DashboardTile, TileId } from "@/features/dashboard/api";
 
 const TILE_ICONS: Record<TileId, Icon> = {
+  safety: AlertCircle,
   applications: Users,
   documents: FileText,
   support: LifeBuoy,
   "bookings-today": Calendar,
   "booking-requests": Clock,
+  "reported-reviews": Flag,
   "new-users": UserPlus,
 };
 

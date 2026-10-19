@@ -97,6 +97,12 @@ export function toAppError(error: unknown): AppError {
     if (error.code === "weak_password") {
       return new AppError("BRVAL", "That password is too weak. Use a longer one.");
     }
+    if (error.code === "over_email_send_rate_limit") {
+      return new AppError("BRVAL", "An email went to this address moments ago. Wait a minute and try again.");
+    }
+    if (error.code === "user_not_found") {
+      return new AppError("BRNTF", "This account no longer exists.");
+    }
     if (error.code === "email_not_confirmed") {
       return new AppError("AUTH", "This email address is not confirmed yet.");
     }

@@ -11,22 +11,33 @@ import {
 } from "@/lib/db/applications";
 import {
   countBookingsStarting,
+  countOpenSafetyCases,
   countOpenSupportCases,
   countPendingBookingRequests,
   listAudit,
 } from "@/lib/db/dashboard";
 import { getUser, listUsers } from "@/lib/db/rbac";
+import { countReportedReviews } from "@/lib/db/reviews";
 import { can } from "@/lib/rbac/can";
 import { PERMISSIONS, type PermissionKey } from "@/lib/rbac/permissions";
 import { toAppError } from "@/lib/supabase/errors";
 import type { AppSupabaseClient } from "@/lib/supabase/server";
-import { daysAgoIso, formatRelativeTime, formatWaiting, istDayRange } from "@/lib/utils/time";
+import {
+  daysAgoIso,
+  formatRelativeTime,
+  formatWaiting,
+  istDateString,
+  istDayRange,
+} from "@/lib/utils/time";
 import type { SessionAccess } from "@/types/access";
 import type { ApplicationStatus, SessionMode } from "@/types/database";
 import {
   AWAITING_REVIEW_STATUSES,
   applicationListHref,
 } from "@/features/applications/schemas";
+import { EMPTY_BOOKING_FILTERS, bookingListHref } from "@/features/bookings/schemas";
+import { EMPTY_REVIEW_FILTERS, reviewListHref } from "@/features/reviews/schemas";
+import { EMPTY_SUPPORT_FILTERS, supportListHref } from "@/features/support/schemas";
 import { USER_MAX_PAGE } from "@/features/users/schemas";
 import {
   APPLICATION_TARGET_ACTIONS,
@@ -48,11 +59,13 @@ export type TileValue =
   | { kind: "error"; message: string };
 
 export type TileId =
+  | "safety"
   | "applications"
   | "documents"
   | "support"
   | "bookings-today"
   | "booking-requests"
+  | "reported-reviews"
   | "new-users";
 
 export type DashboardTile = {
@@ -94,9 +107,21 @@ export async function loadDashboardTiles(
   now: number,
 ): Promise<DashboardTile[]> {
   const allowed = (key: PermissionKey) => can(access.permissions, key);
+  const today = istDateString(now);
 
-  const [applications, documents, support, bookingsToday, bookingRequests, newUsers] =
-    await Promise.all([
+  const [
+    safety,
+    applications,
+    documents,
+    support,
+    bookingsToday,
+    bookingRequests,
+    reportedReviews,
+    newUsers,
+  ] = await Promise.all([
+      allowed("support.read")
+        ? settle(async () => ({ kind: "count", value: await countOpenSafetyCases(client) }))
+        : Promise.resolve(needs("support.read")),
       allowed("applications.read")
         ? settle(async () => {
             const [submitted, underReview] = await Promise.all([
@@ -125,6 +150,13 @@ export async function loadDashboardTiles(
       allowed("bookings.read")
         ? settle(async () => ({ kind: "count", value: await countPendingBookingRequests(client) }))
         : Promise.resolve(needs("bookings.read")),
+      allowed("reviews.moderate")
+        ? settle(async () => {
+            // admin_list_reviews returns at most 200 rows; a full page shows as "200+".
+            const reported = await countReportedReviews(client);
+            return { kind: "count", value: reported.count, capped: reported.capped };
+          })
+        : Promise.resolve(needs("reviews.moderate")),
       allowed("users.read")
         ? settle(async () => {
             // No count function exists: the newest page (the function's 200-row cap) is read
@@ -137,7 +169,22 @@ export async function loadDashboardTiles(
         : Promise.resolve(needs("users.read")),
     ]);
 
+  const tiles: DashboardTile[] = [];
+  // The safety tile shows only when there is something to see (or the count failed): a
+  // zero would only push the other tiles around, and without support.read it cannot know.
+  if (safety.kind === "error" || (safety.kind === "count" && safety.value > 0)) {
+    tiles.push({
+      id: "safety",
+      label: "Safety cases open",
+      hint: "Safety reports not yet resolved or closed.",
+      href: supportListHref(EMPTY_SUPPORT_FILTERS, { category: "safety" }),
+      urgent: true,
+      value: safety,
+    });
+  }
+
   return [
+    ...tiles,
     {
       id: "applications",
       label: "Applications awaiting review",
@@ -158,17 +205,15 @@ export async function loadDashboardTiles(
       id: "support",
       label: "Open support cases",
       hint: "Every case not resolved or closed.",
-      href: null,
-      linkNote: "The support queue page is not built yet (AD-04).",
+      href: supportListHref(EMPTY_SUPPORT_FILTERS, { status: "open" }),
       urgent: true,
       value: support,
     },
     {
       id: "bookings-today",
       label: "Bookings today",
-      hint: "Starting today, India time, not cancelled.",
-      href: null,
-      linkNote: "There is no bookings page in the panel yet.",
+      hint: "Starting today, India time, not cancelled. The list also shows cancelled ones.",
+      href: bookingListHref(EMPTY_BOOKING_FILTERS, { from: today, to: today }),
       urgent: false,
       value: bookingsToday,
     },
@@ -176,10 +221,17 @@ export async function loadDashboardTiles(
       id: "booking-requests",
       label: "Booking requests pending",
       hint: "Requested by a client, not yet answered by the trainer.",
-      href: null,
-      linkNote: "There is no bookings page in the panel yet.",
+      href: bookingListHref(EMPTY_BOOKING_FILTERS, { status: "requested" }),
       urgent: false,
       value: bookingRequests,
+    },
+    {
+      id: "reported-reviews",
+      label: "Reported reviews",
+      hint: "Reviews with an open support report.",
+      href: reviewListHref(EMPTY_REVIEW_FILTERS, { reported: "yes" }),
+      urgent: true,
+      value: reportedReviews,
     },
     {
       id: "new-users",

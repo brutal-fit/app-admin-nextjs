@@ -2,8 +2,8 @@
  * The dashboard's data layer for the tables the panel has no pages for yet (support cases,
  * bookings) and the audit feed. Like rbac.ts and applications.ts, the only place these names
  * are spelled. Reads run with the admin's session, so RLS decides what is counted: support
- * cases need support.read; bookings admit any admin (private.is_admin()); the audit feed is
- * admin_list_audit, which checks audit.read. Every wrapper throws AppError on failure.
+ * cases need support.read; bookings need bookings.read (bookings_select_admin, 20261019000500);
+ * the audit feed is admin_list_audit, which checks audit.read. Every wrapper throws AppError on failure.
  */
 import { toAppError } from "@/lib/supabase/errors";
 import type { AppSupabaseClient } from "@/lib/supabase/server";
@@ -23,6 +23,17 @@ export const OPEN_SUPPORT_STATUSES = [
 
 /** A booking request the trainer has not answered yet. */
 export const PENDING_BOOKING_STATUSES = ["requested"] as const satisfies readonly BookingStatus[];
+
+/** Safety reports still open (any status before resolved or closed); RLS needs support.read. */
+export async function countOpenSafetyCases(client: AppSupabaseClient): Promise<number> {
+  const { count, error } = await client
+    .from(TABLE.supportCases)
+    .select("id", { count: "exact", head: true })
+    .eq("priority", "safety")
+    .in("status", [...OPEN_SUPPORT_STATUSES]);
+  if (error) throw toAppError(error);
+  return count ?? 0;
+}
 
 export async function countOpenSupportCases(client: AppSupabaseClient): Promise<number> {
   const { count, error } = await client

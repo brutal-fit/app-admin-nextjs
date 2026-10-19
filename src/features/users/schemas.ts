@@ -41,3 +41,33 @@ export const createUserSchema = z.object({
 });
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;
+
+/** Reasons stop where admin_set_account_status stops (500 characters). */
+export const ACCOUNT_REASON_MAX = 500;
+
+/** Notes stop where admin_process_privacy_request stops (1000 characters). */
+export const PRIVACY_NOTE_MAX = 1000;
+
+// The function asks for a reason on every change, reinstating included.
+export const setAccountStatusSchema = z.object({
+  userId,
+  status: z.enum(["active", "suspended"]),
+  reason: z
+    .string()
+    .trim()
+    .min(1, "Give a reason for the change.")
+    .max(ACCOUNT_REASON_MAX, `Keep the reason under ${ACCOUNT_REASON_MAX} characters.`),
+});
+
+export const processPrivacyRequestSchema = z.object({
+  requestId: z.guid("Unknown request."),
+  outcome: z.enum(["completed", "rejected"]),
+  // Optional: without a note the user gets the server's default message.
+  note: z
+    .string()
+    .trim()
+    .max(PRIVACY_NOTE_MAX, `Keep the note under ${PRIVACY_NOTE_MAX} characters.`)
+    .transform((value) => (value === "" ? null : value)),
+});
+
+export const passwordResetSchema = z.object({ userId });

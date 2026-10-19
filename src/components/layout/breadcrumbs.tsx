@@ -9,6 +9,15 @@ const SECTION_LABELS: Record<string, { label: string; detail: string }> = {
   applications: { label: "Applications", detail: "Application" },
   users: { label: "Users", detail: "User" },
   roles: { label: "Roles", detail: "Role" },
+  trainers: { label: "Trainers", detail: "Trainer" },
+  support: { label: "Support", detail: "Case" },
+  bookings: { label: "Bookings", detail: "Booking" },
+  reviews: { label: "Reviews", detail: "Review" },
+  catalogue: { label: "Catalogue", detail: "Item" },
+  settings: { label: "Settings", detail: "Setting" },
+  announcements: { label: "Announcements", detail: "Announcement" },
+  audit: { label: "Audit log", detail: "Entry" },
+  analytics: { label: "Analytics", detail: "Details" },
   forbidden: { label: "No access", detail: "Details" },
 };
 

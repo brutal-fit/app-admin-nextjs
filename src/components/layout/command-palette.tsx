@@ -3,12 +3,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  Activity,
+  AlertCircle,
   ArrowRight,
+  BarChart2,
+  Bell,
+  Calendar,
   FileText,
+  Flag,
   Grid,
   HelpCircle,
+  LifeBuoy,
+  List,
   Plus,
+  Settings,
   Shield,
+  Star,
+  UserCheck,
   UserPlus,
   Users,
   type Icon,
@@ -25,11 +36,17 @@ import {
   CommandShortcut,
 } from "@/components/ui/command";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { analyticsHref } from "@/features/analytics/schemas";
 import { applicationListHref } from "@/features/applications/schemas";
+import { EMPTY_BOOKING_FILTERS, bookingListHref } from "@/features/bookings/schemas";
+import { catalogueHref } from "@/features/catalogue/schemas";
+import { EMPTY_REVIEW_FILTERS, reviewListHref } from "@/features/reviews/schemas";
+import { EMPTY_SUPPORT_FILTERS, supportListHref } from "@/features/support/schemas";
 import { listUsersAction } from "@/features/users/actions";
 import { can } from "@/lib/rbac/can";
 import { navItems, type PermissionKey } from "@/lib/rbac/permissions";
 import { SERVICE_ROLE_MISSING_MESSAGE } from "@/lib/supabase/errors";
+import { istDateString } from "@/lib/utils/time";
 import { useCommandStore } from "@/stores/command-store";
 import { useSessionStore } from "@/stores/session-store-provider";
 import type { AdminUserRow } from "@/types/database";
@@ -43,6 +60,15 @@ const PAGE_ICONS: Record<string, Icon> = {
   "/applications": FileText,
   "/users": Users,
   "/roles": Shield,
+  "/trainers": UserCheck,
+  "/support": LifeBuoy,
+  "/bookings": Calendar,
+  "/reviews": Star,
+  "/catalogue": List,
+  "/settings": Settings,
+  "/announcements": Bell,
+  "/audit": Activity,
+  "/analytics": BarChart2,
 };
 
 const PAGE_KEYS: Record<string, string> = {
@@ -72,6 +98,36 @@ const JUMPS: readonly Jump[] = [
     label: "Applications: unreviewed documents",
     href: applicationListHref("all", true),
     permission: "documents.review",
+  },
+  {
+    id: "trainers-unlisted",
+    label: "Trainers: not listed",
+    href: "/trainers?listed=unlisted",
+    permission: "applications.read",
+  },
+  {
+    id: "bookings-requested",
+    label: "Bookings: requests pending",
+    href: bookingListHref(EMPTY_BOOKING_FILTERS, { status: "requested" }),
+    permission: "bookings.read",
+  },
+  {
+    id: "reviews-reported",
+    label: "Reviews: reported",
+    href: reviewListHref(EMPTY_REVIEW_FILTERS, { reported: "yes" }),
+    permission: "reviews.moderate",
+  },
+  {
+    id: "catalogue-cities-areas",
+    label: "Catalogue: cities and areas",
+    href: catalogueHref("area"),
+    permission: "catalogue.manage",
+  },
+  {
+    id: "analytics-last-7-days",
+    label: "Analytics: last 7 days",
+    href: analyticsHref({ preset: 7 }),
+    permission: "metrics.read",
   },
   {
     id: "users-joined-week",
@@ -234,6 +290,52 @@ export function CommandPalette({ serviceRoleConfigured }: { serviceRoleConfigure
 
             <CommandSeparator />
             <CommandGroup heading="Actions">
+              {allowed("support.read") ? (
+                <CommandItem value="action open support queue cases" onSelect={() => go("/support")}>
+                  <LifeBuoy size={16} aria-hidden="true" />
+                  Open support queue
+                </CommandItem>
+              ) : null}
+              {allowed("support.read") ? (
+                <CommandItem
+                  value="action safety cases support reports"
+                  onSelect={() => go(supportListHref(EMPTY_SUPPORT_FILTERS, { category: "safety" }))}
+                >
+                  <AlertCircle size={16} aria-hidden="true" />
+                  Safety cases
+                </CommandItem>
+              ) : null}
+              {allowed("bookings.read") ? (
+                <CommandItem
+                  value="action bookings today sessions"
+                  // Today is read when the item is chosen, so a palette left open overnight stays right.
+                  onSelect={() => {
+                    const today = istDateString();
+                    go(bookingListHref(EMPTY_BOOKING_FILTERS, { from: today, to: today }));
+                  }}
+                >
+                  <Calendar size={16} aria-hidden="true" />
+                  Bookings today
+                </CommandItem>
+              ) : null}
+              {allowed("reviews.moderate") ? (
+                <CommandItem
+                  value="action reported reviews moderate"
+                  onSelect={() => go(reviewListHref(EMPTY_REVIEW_FILTERS, { reported: "yes" }))}
+                >
+                  <Flag size={16} aria-hidden="true" />
+                  Reported reviews
+                </CommandItem>
+              ) : null}
+              {allowed("announcements.send") ? (
+                <CommandItem
+                  value="action send announcement notification inbox"
+                  onSelect={() => go("/announcements")}
+                >
+                  <Bell size={16} aria-hidden="true" />
+                  Send an announcement
+                </CommandItem>
+              ) : null}
               {allowed("rbac.manage") ? (
                 <CommandItem value="action new role" onSelect={() => go("/roles?new=role")}>
                   <Plus size={16} aria-hidden="true" />

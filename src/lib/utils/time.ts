@@ -55,3 +55,32 @@ export function formatWaiting(iso: string, now: number): string {
   const days = Math.floor(hours / 24);
   return `${days} ${days === 1 ? "day" : "days"}`;
 }
+
+/** Today's date in India as "YYYY-MM-DD" (the value a date input holds). */
+export function istDateString(now: number = currentTime()): string {
+  return new Date(now + IST_OFFSET_MS).toISOString().slice(0, 10);
+}
+
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+/** True for a real calendar date written "YYYY-MM-DD". */
+export function isIsoDate(value: string): boolean {
+  if (!DATE_PATTERN.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+/**
+ * India-time dates as a UTC range for timestamptz filters: `from` at its midnight, `to`
+ * inclusive (the range ends at the next midnight). Either side may be absent.
+ */
+export function istDatesToRange(
+  fromDate: string | null,
+  toDate: string | null,
+): { from: string | null; to: string | null } {
+  const midnight = (date: string) => Date.parse(`${date}T00:00:00Z`) - IST_OFFSET_MS;
+  return {
+    from: fromDate ? new Date(midnight(fromDate)).toISOString() : null,
+    to: toDate ? new Date(midnight(toDate) + DAY_MS).toISOString() : null,
+  };
+}

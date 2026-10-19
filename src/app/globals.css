@@ -54,6 +54,18 @@
   /* The red glow behind the page header, like the app's: the accent at low strength. */
   --glow: rgb(255 86 86 / 0.14);
 
+  /*
+   * Chart series, in fixed order (a series keeps its slot). Validated together on the card
+   * surface: lightness band, chroma, colour-blind separation of neighbours (worst 8.4) and
+   * 3:1 contrast. Text never wears these; labels stay in foreground and muted-foreground.
+   */
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-3: #199e70;
+  --chart-4: #c98500;
+  /* Hairline gridlines inside charts, quieter than --border. */
+  --chart-grid: #2c2c2c;
+
   /* One focus ring for everything we draw ourselves. */
   --focus-ring-width: 2px;
   --focus-ring-offset: 2px;
@@ -94,6 +106,11 @@
   --color-ring: var(--ring);
   --color-surface-raised: var(--surface-raised);
   --color-glow: var(--glow);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-grid: var(--chart-grid);
 
   --shadow-tile: var(--shadow-tile);
   --shadow-tile-hover: var(--shadow-tile-hover);

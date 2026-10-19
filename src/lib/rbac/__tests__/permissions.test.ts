@@ -10,7 +10,7 @@ import {
   routePermission,
 } from "@/lib/rbac/permissions";
 
-// Mirrors the rows seeded by 20261019000200_rbac.sql.
+// Mirrors the rows seeded by the rbac migrations 20261019000200 to 20261019000700.
 const SEEDED: Record<string, string> = {
   "rbac.manage": "rbac",
   "users.read": "users",
@@ -18,11 +18,21 @@ const SEEDED: Record<string, string> = {
   "applications.read": "applications",
   "applications.review": "applications",
   "documents.review": "applications",
+  "trainers.edit": "applications",
+  "users.suspend": "users",
+  "privacy.process": "users",
+  "support.assign": "support",
+  "bookings.address": "bookings",
+  "bookings.cancel": "bookings",
   "support.read": "support",
   "support.manage": "support",
   "bookings.read": "bookings",
   "reviews.moderate": "reviews",
   "audit.read": "audit",
+  "audit.export": "audit",
+  "metrics.read": "audit",
+  "catalogue.manage": "settings",
+  "announcements.send": "settings",
 };
 
 const ADMIN_DIR = join(process.cwd(), "src", "app", "(admin)");
@@ -102,7 +112,21 @@ describe("navItems", () => {
   it("starts with the dashboard and lists gated top-level routes", () => {
     const items = navItems();
     expect(items[0]).toEqual({ href: "/dashboard", label: "Dashboard", permission: null });
-    expect(items.map((i) => i.href)).toEqual(["/dashboard", "/roles", "/users", "/applications"]);
+    expect(items.map((i) => i.href)).toEqual([
+      "/dashboard",
+      "/roles",
+      "/users",
+      "/applications",
+      "/trainers",
+      "/support",
+      "/bookings",
+      "/reviews",
+      "/catalogue",
+      "/settings",
+      "/announcements",
+      "/audit",
+      "/analytics",
+    ]);
   });
 });
 
@@ -110,5 +134,15 @@ describe("applications routes", () => {
   it("gates the list and detail on applications.read", () => {
     expect(routePermission("/applications")).toEqual({ kind: "permission", key: "applications.read" });
     expect(routePermission("/applications/abc")).toEqual({ kind: "permission", key: "applications.read" });
+  });
+});
+
+describe("trainers, bookings and reviews routes", () => {
+  it("gates each list and detail by key", () => {
+    expect(routePermission("/trainers")).toEqual({ kind: "permission", key: "applications.read" });
+    expect(routePermission("/trainers/abc")).toEqual({ kind: "permission", key: "applications.read" });
+    expect(routePermission("/bookings")).toEqual({ kind: "permission", key: "bookings.read" });
+    expect(routePermission("/bookings/abc")).toEqual({ kind: "permission", key: "bookings.read" });
+    expect(routePermission("/reviews")).toEqual({ kind: "permission", key: "reviews.moderate" });
   });
 });
