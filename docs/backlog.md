@@ -9,7 +9,8 @@ Prioritised. Status: todo, in progress, done (with date and handoff dir or commi
 | AD-03 | Applications and documents review (signed URLs, platform price), using `review_document` and `review_application` | in progress, task-18: pages, actions and data layer landed 2026-10-19; Vitest render and action tests with the assistant |
 | AD-04 | Support cases and reports | todo |
 | AD-05 | Audit log viewer (`private.admin_audit_log` through a function) | todo |
-| AD-06 | Vitest: registry matches the seeded permissions; `can()` helpers; error mapping; render tests for the five screens; form limits and group fix | in progress, task-12 |
-| AD-08 | Create a `dev` branch to match the other repos (owner's call; work sits on `main`) | todo, owner |
-| AD-09 | Panel polish (task 19): "needs me now" dashboard, command palette, shortcuts, motion, fitness backdrop, sortable keyboard tables, application timeline | in progress, task-19: landed 2026-10-19; render tests with the assistant |
+| AD-06 | Vitest suite: 133 tests in 23 files (registry, helpers, errors, screens, dashboard, palette, shortcuts) | done 2026-10-19 |
+| AD-08 | `dev` branch created and tracked | done 2026-10-19 |
+| AD-10 | Follow-ups from the panel upgrade note (`../memory/notes/admin-panel-polish.md`): user count capped by `admin_list_users` limit (needs a count function), bookings tile depends on an admin read policy on `bookings`, empty "Documents" permission group card, `PGRST303` not mapped | todo |
+| AD-09 | Panel polish (task 19): "needs me now" dashboard, command palette, shortcuts, motion, fitness backdrop, sortable keyboard tables, application timeline | done 2026-10-19, `f154c4c` |
 | AD-07 | Deployment target (Vercel or similar) and the production env | todo, owner decision |
