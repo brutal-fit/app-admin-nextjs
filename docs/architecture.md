@@ -177,3 +177,10 @@ styles use. Montserrat through `next/font/google` as `--font-sans`.
 `.env.example` (committed, un-ignored in `.gitignore`): `NEXT_PUBLIC_SUPABASE_URL`,
 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY=` (server only).
 `.env.local` holds the same with the public values filled; gitignored.
+
+Hosted: Vercel project `app-admin-nextjs` (team `purvikbrutal`), `main` to
+https://admin.brutal.fit (production), `dev` to https://admin-dev.brutal.fit (preview pinned
+to the branch). The two public variables are set for Production and Preview; the service role
+key is not set. With `cacheComponents` on, `/roles/[id]` runs its session gate during the build
+prerender, so a missing public variable fails the build instead of the request (see README,
+Deploy).
