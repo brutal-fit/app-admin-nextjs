@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { passwordResetSchema } from "@/features/users/schemas";
+import { notePasswordReset } from "@/lib/db/users";
 import { ForbiddenError, requirePermission } from "@/lib/rbac/require-permission";
 import { AppError, errorPayload, toAppError, type AppErrorPayload } from "@/lib/supabase/errors";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createServiceClient, isServiceRoleConfigured } from "@/server/service-client";
 
 function fail(status: number, error: AppErrorPayload) {
@@ -15,9 +17,25 @@ function statusFor(error: AppError): number {
 }
 
 /**
- * Sends the account's password reset email. The email address is read with the service role
- * (Auth admin API) from the user id, so the client never chooses where the email goes. Neither
- * the address nor the Auth answer is logged.
+ * The audit row for a reset already sent. It runs with the caller's session, so the audit
+ * names the admin; a failure here must not turn a sent email into an error, so it is only
+ * written to the server console (code and message, never the address).
+ */
+async function noteReset(userId: string): Promise<void> {
+  try {
+    const client = await createSupabaseServerClient();
+    await notePasswordReset(client, userId);
+  } catch (error) {
+    const appError = toAppError(error);
+    console.error(`Password reset sent but not audited: ${appError.code} ${appError.message}`);
+  }
+}
+
+/**
+ * Sends the account's password reset email, then notes it in the audit log through
+ * admin_note_password_reset. The email address is read with the service role (Auth admin
+ * API) from the user id, so the client never chooses where the email goes. Neither the
+ * address nor the Auth answer is logged.
  */
 export async function POST(request: Request) {
   try {
@@ -63,5 +81,6 @@ export async function POST(request: Request) {
     return fail(500, errorPayload(error));
   }
 
+  await noteReset(parsed.data.userId);
   return NextResponse.json({ ok: true, sent: true }, { status: 200 });
 }

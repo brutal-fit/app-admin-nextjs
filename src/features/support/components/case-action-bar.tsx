@@ -156,9 +156,7 @@ export function CaseActionBar({
       ? `${team.reason} Only unassigning is possible.`
       : team?.kind === "error"
         ? `The team list did not load: ${team.message}`
-        : team?.kind === "ok" && team.capped
-          ? "Team members come from the 200 most recent accounts; older admins may be missing."
-          : null;
+        : null;
 
   const disabled = (section: Section) => pending && busy === section;
 

@@ -13,8 +13,8 @@ import type { ActionResult } from "@/types/action-result";
 
 /** Read-only: who would receive this segment now. Writes nothing. */
 export async function estimateRecipientsAction(input: unknown): Promise<ActionResult<RecipientEstimate>> {
-  return runAction(estimateRecipientsSchema, input, "announcements.send", async (data, { supabase, access }) =>
-    estimateRecipients(supabase, access, data.segment),
+  return runAction(estimateRecipientsSchema, input, "announcements.send", async (data, { supabase }) =>
+    estimateRecipients(supabase, data.segment),
   );
 }
 

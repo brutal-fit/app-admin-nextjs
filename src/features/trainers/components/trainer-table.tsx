@@ -66,7 +66,7 @@ const COLUMNS: DataTableColumn<TrainerListItem>[] = [
 
 /**
  * Approved trainers with their listing state, rating, booking count, city and platform
- * prices. Gated by applications.read; the bookings column needs bookings.read.
+ * prices. Gated by trainers.read; the bookings column needs bookings.read.
  */
 export function TrainerTable({ rows, filtered }: { rows: TrainerListItem[]; filtered: boolean }) {
   return (

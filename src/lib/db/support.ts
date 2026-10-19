@@ -7,9 +7,15 @@
 import { z } from "zod";
 import { AppError, toAppError } from "@/lib/supabase/errors";
 import type { AppSupabaseClient } from "@/lib/supabase/server";
-import type { ReportCategory, SupportCaseListRow, SupportCaseStatus } from "@/types/database";
+import type {
+  AdminTeamRow,
+  ReportCategory,
+  SupportCaseListRow,
+  SupportCaseStatus,
+} from "@/types/database";
 
 const RPC = {
+  team: "admin_list_team",
   list: "admin_list_support_cases",
   get: "admin_get_support_case",
   update: "admin_update_support_case",
@@ -222,4 +228,14 @@ export async function updateSupportCase(
   });
   if (error) throw toAppError(error);
   return parseDetail(data);
+}
+
+/**
+ * Every user holding an is_admin role (the rule admin_update_support_case enforces for an
+ * assignee), ordered by name, with their role keys. Needs support.read or users.read.
+ */
+export async function listTeam(client: AppSupabaseClient): Promise<AdminTeamRow[]> {
+  const { data, error } = await client.rpc(RPC.team);
+  if (error) throw toAppError(error);
+  return data;
 }

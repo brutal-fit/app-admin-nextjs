@@ -7,6 +7,7 @@ export type { Icon, IconProps } from "react-feather";
 export {
   Activity,
   AlertCircle,
+  Archive,
   ArrowDown,
   ArrowLeft,
   ArrowRight,

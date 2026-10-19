@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { motion } from "motion/react";
 import {
   Activity,
+  Archive,
   BarChart2,
   Bell,
   Calendar,
@@ -29,6 +30,7 @@ const NAV_ICONS: Record<string, Icon> = {
   "/dashboard": Grid,
   "/roles": Shield,
   "/users": Users,
+  "/privacy": Archive,
   "/applications": FileText,
   "/trainers": UserCheck,
   "/support": LifeBuoy,

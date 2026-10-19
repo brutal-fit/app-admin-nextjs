@@ -1,9 +1,10 @@
 /*
- * The bookings data layer: the only file in src/ that spells the booking admin functions and
- * booking_locations. Reads run with the admin's session: bookings need bookings.read
- * (bookings_select_admin), the session address needs bookings.address
- * (booking_locations_select_admin), both from 20261019000500. admin_cancel_booking and
- * admin_resolve_dispute check bookings.cancel. Every wrapper throws AppError on failure.
+ * The bookings data layer: the only file in src/ that spells the booking admin functions.
+ * Reads run with the admin's session: admin_list_bookings and admin_get_booking need
+ * bookings.read, and admin_get_booking adds the session address only for a caller holding
+ * bookings.address (20261019000800); the trainer count scan reads bookings through
+ * bookings_select_admin. admin_cancel_booking and admin_resolve_dispute check bookings.cancel.
+ * Every wrapper throws AppError on failure.
  */
 import { z } from "zod";
 import { AppError, toAppError } from "@/lib/supabase/errors";
@@ -12,13 +13,16 @@ import type {
   AdminBookingListRow,
   BookingRow,
   BookingStatus,
+  CancelledBy,
+  PaymentStatus,
   SessionMode,
 } from "@/types/database";
 
-const TABLE = { bookings: "bookings", locations: "booking_locations" } as const;
+const TABLE = { bookings: "bookings" } as const;
 
 const RPC = {
   list: "admin_list_bookings",
+  get: "admin_get_booking",
   cancel: "admin_cancel_booking",
   resolveDispute: "admin_resolve_dispute",
 } as const;
@@ -26,8 +30,30 @@ const RPC = {
 /** admin_list_bookings returns at most this many rows per call. */
 export const BOOKING_LIST_MAX = 200;
 
-const BOOKING_COLUMNS =
-  "id, client_id, trainer_id, service_id, service_title, mode, start_at, end_at, duration_minutes, price_snapshot_inr, status, payment_status, cancellation_policy, cancellation_reason, requested_start_at, trainer_note, cancelled_by, dispute_note, dispute_resolved_at, dispute_resolved_by, created_at, updated_at";
+const BOOKING_STATUS_VALUES = [
+  "requested",
+  "pending_confirmation",
+  "confirmed",
+  "reschedule_requested",
+  "cancelled",
+  "completed",
+  "no_show",
+  "disputed",
+] as const satisfies readonly BookingStatus[];
+
+const PAYMENT_STATUS_VALUES = [
+  "not_required",
+  "pending",
+  "authorized",
+  "paid",
+  "failed",
+  "refund_pending",
+  "partially_refunded",
+  "refunded",
+  "disputed",
+] as const satisfies readonly PaymentStatus[];
+
+const CANCELLED_BY_VALUES = ["client", "trainer", "admin"] as const satisfies readonly CancelledBy[];
 
 // The dispute column is jsonb, so its shape is checked before the panel renders it.
 const disputeSchema = z
@@ -55,25 +81,25 @@ export type BookingListRow = Omit<AdminBookingListRow, "dispute"> & {
   dispute: BookingDispute | null;
 };
 
+function toDispute(dispute: z.output<typeof disputeSchema>): BookingDispute | null {
+  return dispute
+    ? {
+        state: dispute.state,
+        caseId: dispute.case_id ?? null,
+        caseStatus: dispute.case_status ?? null,
+        note: dispute.note ?? null,
+        resolvedAt: dispute.resolved_at ?? null,
+        resolvedByName: dispute.resolved_by_name ?? null,
+      }
+    : null;
+}
+
 function toListRow(row: AdminBookingListRow): BookingListRow {
   const parsed = disputeSchema.safeParse(row.dispute);
   if (!parsed.success) {
     throw new AppError("UNKNOWN", "A booking came back in a shape the panel does not know.");
   }
-  const dispute = parsed.data;
-  return {
-    ...row,
-    dispute: dispute
-      ? {
-          state: dispute.state,
-          caseId: dispute.case_id ?? null,
-          caseStatus: dispute.case_status ?? null,
-          note: dispute.note ?? null,
-          resolvedAt: dispute.resolved_at ?? null,
-          resolvedByName: dispute.resolved_by_name ?? null,
-        }
-      : null,
-  };
+  return { ...row, dispute: toDispute(parsed.data) };
 }
 
 export type BookingQuery = {
@@ -107,53 +133,128 @@ export async function listBookings(
   return data.map(toListRow);
 }
 
-export async function getBooking(client: AppSupabaseClient, id: string): Promise<BookingRow> {
-  const { data, error } = await client
-    .from(TABLE.bookings)
-    .select(BOOKING_COLUMNS)
-    .eq("id", id)
-    .maybeSingle();
-  if (error) throw toAppError(error);
-  if (!data) throw new AppError("BRNTF", "This booking does not exist.");
-  return data;
+const text = z.string().nullable().optional();
+
+// The booking key is to_jsonb(bookings row); unknown columns are dropped.
+const bookingRowSchema = z.object({
+  id: z.string(),
+  client_id: z.string(),
+  trainer_id: z.string(),
+  service_id: z.string().nullable(),
+  service_title: z.string(),
+  mode: z.enum(["home", "online"]),
+  start_at: z.string(),
+  end_at: z.string(),
+  duration_minutes: z.number(),
+  price_snapshot_inr: z.number(),
+  status: z.enum(BOOKING_STATUS_VALUES),
+  payment_status: z.enum(PAYMENT_STATUS_VALUES),
+  cancellation_policy: z.string(),
+  cancellation_reason: z.string().nullable(),
+  requested_start_at: z.string().nullable(),
+  trainer_note: z.string().nullable(),
+  cancelled_by: z.enum(CANCELLED_BY_VALUES).nullable().optional(),
+  dispute_note: text,
+  dispute_resolved_at: text,
+  dispute_resolved_by: text,
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+const partySchema = z.object({ id: z.string(), name: text }).nullable().optional();
+
+const timelineEventSchema = z.object({
+  event: z.string(),
+  at: z.string(),
+  by: z.string(),
+  actor_id: text,
+  actor_name: text,
+  note: text,
+  outcome: text,
+});
+
+const bookingDetailSchema = z.object({
+  booking: bookingRowSchema,
+  client: partySchema,
+  trainer: partySchema,
+  cancelled_by: z.enum([...CANCELLED_BY_VALUES, "unknown"]).nullable().optional(),
+  timeline: z.array(timelineEventSchema),
+  dispute: disputeSchema.optional(),
+  has_address: z.boolean(),
+  // Present only for a caller holding bookings.address; null means no address yet.
+  address: z.string().nullable().optional(),
+});
+
+export type BookingParty = { id: string; name: string | null };
+
+export type BookingTimelineEvent = {
+  /** created, confirmed, reschedule_requested, rescheduled, reschedule_declined, cancelled, completed, no_show, dispute_resolved; others shown as they come. */
+  event: string;
+  at: string;
+  /** client, trainer or admin. */
+  by: string;
+  actorName: string | null;
+  note: string | null;
+  /** Dispute outcome on dispute_resolved. */
+  outcome: string | null;
+};
+
+export type BookingAddress = { visible: true; text: string | null } | { visible: false };
+
+export type BookingDetail = {
+  booking: BookingRow;
+  client: BookingParty | null;
+  trainer: BookingParty | null;
+  /** Who cancelled, read by the server from the column or the reason it wrote; null unless cancelled. */
+  cancelledBy: CancelledBy | "unknown" | null;
+  timeline: BookingTimelineEvent[];
+  dispute: BookingDispute | null;
+  hasAddress: boolean;
+  address: BookingAddress;
+};
+
+function hasKey(value: unknown, key: string): boolean {
+  return typeof value === "object" && value !== null && !Array.isArray(value) && key in value;
 }
 
 /**
- * The list row for one booking (party names, address flag, dispute state). There is no
- * admin function for one booking, so the list is narrowed to its trainer, client and start
- * instant, and the row is picked by id.
+ * One booking with its parties, timeline, dispute and, only for a caller holding
+ * bookings.address, the session address (admin_get_booking).
  */
-export async function getBookingListRow(
-  client: AppSupabaseClient,
-  booking: Pick<BookingRow, "id" | "trainer_id" | "client_id" | "start_at">,
-): Promise<BookingListRow | null> {
-  const start = new Date(booking.start_at).getTime();
-  const rows = await listBookings(client, {
-    status: null,
-    mode: null,
-    // One second either side covers the sub-millisecond part JavaScript dates drop.
-    from: new Date(start - 1000).toISOString(),
-    to: new Date(start + 1000).toISOString(),
-    trainerId: booking.trainer_id,
-    clientId: booking.client_id,
-    limit: BOOKING_LIST_MAX,
-    offset: 0,
-  });
-  return rows.find((row) => row.id === booking.id) ?? null;
-}
-
-/** The session address, or null when none is stored. RLS needs bookings.address. */
-export async function getBookingAddress(
-  client: AppSupabaseClient,
-  bookingId: string,
-): Promise<string | null> {
-  const { data, error } = await client
-    .from(TABLE.locations)
-    .select("address_text")
-    .eq("booking_id", bookingId)
-    .maybeSingle();
+export async function getBookingDetail(client: AppSupabaseClient, id: string): Promise<BookingDetail> {
+  const { data, error } = await client.rpc(RPC.get, { p_id: id });
   if (error) throw toAppError(error);
-  return data?.address_text ?? null;
+  const parsed = bookingDetailSchema.safeParse(data);
+  if (!parsed.success) {
+    throw new AppError("UNKNOWN", "The booking came back in a shape the panel does not know.");
+  }
+  const detail = parsed.data;
+  const party = (value: z.output<typeof partySchema>): BookingParty | null =>
+    value ? { id: value.id, name: value.name ?? null } : null;
+  return {
+    booking: {
+      ...detail.booking,
+      cancelled_by: detail.booking.cancelled_by ?? null,
+      dispute_note: detail.booking.dispute_note ?? null,
+      dispute_resolved_at: detail.booking.dispute_resolved_at ?? null,
+      dispute_resolved_by: detail.booking.dispute_resolved_by ?? null,
+    },
+    client: party(detail.client),
+    trainer: party(detail.trainer),
+    cancelledBy: detail.cancelled_by ?? null,
+    timeline: detail.timeline.map((entry) => ({
+      event: entry.event,
+      at: entry.at,
+      by: entry.by,
+      actorName: entry.actor_name ?? null,
+      note: entry.note ?? null,
+      outcome: entry.outcome ?? null,
+    })),
+    dispute: toDispute(detail.dispute ?? null),
+    hasAddress: detail.has_address,
+    // The raw reply decides: a missing key means the caller lacks bookings.address.
+    address: hasKey(data, "address") ? { visible: true, text: detail.address ?? null } : { visible: false },
+  };
 }
 
 // Enough for every booking of the listed trainers at today's scale; the list says when hit.

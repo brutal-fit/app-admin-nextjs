@@ -1,20 +1,16 @@
 /*
- * Server-side loaders for the booking pages. The route needs bookings.read; the session
- * address needs bookings.address and is fetched only for a session that holds it.
+ * Server-side loaders for the booking pages. The route needs bookings.read; the detail is one
+ * admin_get_booking call, which carries the session address only for bookings.address.
  */
 import {
-  getBooking,
-  getBookingAddress,
-  getBookingListRow,
+  getBookingDetail,
   listBookings,
+  type BookingDetail,
   type BookingListRow,
 } from "@/lib/db/bookings";
-import { can } from "@/lib/rbac/can";
 import { toAppError } from "@/lib/supabase/errors";
 import type { AppSupabaseClient } from "@/lib/supabase/server";
 import { istDatesToRange } from "@/lib/utils/time";
-import type { SessionAccess } from "@/types/access";
-import type { BookingRow } from "@/types/database";
 import { missingPermissionMessage } from "@/features/users/format";
 import {
   BOOKING_PAGE_SIZE,
@@ -70,50 +66,34 @@ export async function loadBookingList(
 export type BookingAddressState =
   | { kind: "ok"; text: string }
   | { kind: "none" }
-  | { kind: "hidden"; reason: string }
-  | { kind: "error"; message: string };
+  | { kind: "hidden"; reason: string };
 
 export type BookingDetailResult =
   | {
       ok: true;
-      booking: BookingRow;
-      /** Party names, the address flag and the dispute state; null if the list lookup missed. */
-      summary: BookingListRow | null;
+      detail: BookingDetail;
       address: BookingAddressState;
     }
   | { ok: false; error: string };
 
-async function loadAddress(
-  client: AppSupabaseClient,
-  access: SessionAccess,
-  bookingId: string,
-): Promise<BookingAddressState> {
-  if (!can(access.permissions, "bookings.address")) {
+/** The address card state from the reply: the server leaves the key out without bookings.address. */
+function addressState(address: BookingDetail["address"]): BookingAddressState {
+  if (!address.visible) {
     return { kind: "hidden", reason: missingPermissionMessage("bookings.address", "The session address") };
   }
-  try {
-    const text = await getBookingAddress(client, bookingId);
-    return text ? { kind: "ok", text } : { kind: "none" };
-  } catch (error) {
-    return { kind: "error", message: toAppError(error).message };
-  }
+  return address.text ? { kind: "ok", text: address.text } : { kind: "none" };
 }
 
 export async function loadBookingDetail(
   client: AppSupabaseClient,
-  access: SessionAccess,
   id: string,
 ): Promise<BookingDetailResult> {
   if (!bookingIdSchema.safeParse(id).success) {
     return { ok: false, error: "This booking does not exist." };
   }
   try {
-    const booking = await getBooking(client, id);
-    const [summary, address] = await Promise.all([
-      getBookingListRow(client, booking),
-      loadAddress(client, access, id),
-    ]);
-    return { ok: true, booking, summary, address };
+    const detail = await getBookingDetail(client, id);
+    return { ok: true, detail, address: addressState(detail.address) };
   } catch (error) {
     return { ok: false, error: toAppError(error).message };
   }

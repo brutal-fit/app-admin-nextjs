@@ -5,8 +5,7 @@ import { MODE_LABELS } from "@/features/applications/schemas";
 import { PaymentStatusBadge } from "@/features/bookings/components/payment-status-badge";
 import { CANCELLED_BY_LABELS } from "@/features/bookings/schemas";
 import { permittedHref } from "@/features/support/format";
-import type { BookingListRow } from "@/lib/db/bookings";
-import type { BookingRow } from "@/types/database";
+import type { BookingDetail as BookingDetailData } from "@/lib/db/bookings";
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -44,16 +43,15 @@ function Card({ id, title, children }: { id: string; title: string; children: Re
  * Gated by bookings.read.
  */
 export function BookingDetail({
-  booking,
-  summary,
+  detail,
   permissions,
 }: {
-  booking: BookingRow;
-  summary: BookingListRow | null;
+  detail: BookingDetailData;
   permissions: readonly string[];
 }) {
-  const clientName = summary?.client_name || "Unnamed";
-  const trainerName = summary?.trainer_name || "Unnamed";
+  const { booking, cancelledBy } = detail;
+  const clientName = detail.client?.name || "Unnamed";
+  const trainerName = detail.trainer?.name || "Unnamed";
   const trainerHref =
     permittedHref(permissions, `/trainers/${booking.trainer_id}`) ??
     permittedHref(permissions, `/users/${booking.trainer_id}`);
@@ -88,7 +86,7 @@ export function BookingDetail({
           {booking.status === "cancelled" ? (
             <>
               <Row label="Cancelled">
-                {booking.cancelled_by ? CANCELLED_BY_LABELS[booking.cancelled_by] : "Cancelled"}
+                {cancelledBy && cancelledBy !== "unknown" ? CANCELLED_BY_LABELS[cancelledBy] : "Cancelled, by whom is not on record"}
               </Row>
               <Row label="Reason">{booking.cancellation_reason || "None given"}</Row>
             </>

@@ -19,6 +19,7 @@ const SEEDED: Record<string, string> = {
   "applications.review": "applications",
   "documents.review": "applications",
   "trainers.edit": "applications",
+  "trainers.read": "applications",
   "users.suspend": "users",
   "privacy.process": "users",
   "support.assign": "support",
@@ -51,6 +52,10 @@ function adminRoutes(dir: string): string[] {
 }
 
 describe("permission registry", () => {
+  it("holds 22 keys", () => {
+    expect(PERMISSIONS).toHaveLength(22);
+  });
+
   it("holds exactly the seeded permission keys", () => {
     expect(PERMISSIONS.map((p) => p.key).sort()).toEqual(Object.keys(SEEDED).sort());
   });
@@ -116,6 +121,7 @@ describe("navItems", () => {
       "/dashboard",
       "/roles",
       "/users",
+      "/privacy",
       "/applications",
       "/trainers",
       "/support",
@@ -139,10 +145,16 @@ describe("applications routes", () => {
 
 describe("trainers, bookings and reviews routes", () => {
   it("gates each list and detail by key", () => {
-    expect(routePermission("/trainers")).toEqual({ kind: "permission", key: "applications.read" });
-    expect(routePermission("/trainers/abc")).toEqual({ kind: "permission", key: "applications.read" });
+    expect(routePermission("/trainers")).toEqual({ kind: "permission", key: "trainers.read" });
+    expect(routePermission("/trainers/abc")).toEqual({ kind: "permission", key: "trainers.read" });
     expect(routePermission("/bookings")).toEqual({ kind: "permission", key: "bookings.read" });
     expect(routePermission("/bookings/abc")).toEqual({ kind: "permission", key: "bookings.read" });
     expect(routePermission("/reviews")).toEqual({ kind: "permission", key: "reviews.moderate" });
+  });
+});
+
+describe("privacy route", () => {
+  it("gates the queue on privacy.process", () => {
+    expect(routePermission("/privacy")).toEqual({ kind: "permission", key: "privacy.process" });
   });
 });

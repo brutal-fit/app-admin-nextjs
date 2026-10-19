@@ -1,7 +1,8 @@
 /*
  * Server-side loaders for the trainer pages. A trainer here is an approved application with
- * its public profile; the route needs applications.read, documents need documents.review
- * and booking counts need bookings.read, each said on the page when missing.
+ * its public profile; the route needs trainers.read, the list (approved applications) also
+ * needs applications.read, documents need documents.review and booking counts need
+ * bookings.read, each said on the page when missing.
  */
 import {
   getApplication,
@@ -68,6 +69,11 @@ export async function loadTrainerList(
   access: SessionAccess,
   filter: ListedFilter,
 ): Promise<TrainerListResult> {
+  // Applications are readable only with applications.read; without it RLS would return none
+  // and the list would read as empty instead of hidden.
+  if (!can(access.permissions, "applications.read")) {
+    return { ok: false, error: missingPermissionMessage("applications.read", "Listing trainers") };
+  }
   try {
     const applications = await listApplications(client, {
       statuses: ["approved"],

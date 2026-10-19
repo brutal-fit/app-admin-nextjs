@@ -75,25 +75,21 @@ function audienceSummary(audience: Audience, city: string, user: AdminUserRow | 
   return audience === "all" ? "Everyone" : "All clients";
 }
 
+const NO_RECIPIENTS = "No one matches this audience";
+
 function estimateText(estimate: RecipientEstimate): string {
-  switch (estimate.kind) {
-    case "exact":
-      if (estimate.count === 0) return "No one matches this audience; the server will refuse to send.";
-      if (estimate.count > ANNOUNCEMENT_RECIPIENT_MAX) {
-        return `${peopleCount(estimate.count)} match, over the server's limit of ${ANNOUNCEMENT_RECIPIENT_MAX.toLocaleString("en-IN")} per send. Narrow it down.`;
-      }
-      return `${peopleCount(estimate.count)} would receive this now.`;
-    case "floor":
-      return `At least ${peopleCount(estimate.count)} (counted the first ${estimate.scanned.toLocaleString("en-IN")} accounts). The server counts everyone when it sends.`;
-    case "unavailable":
-      return `${estimate.reason} The server counts the recipients when it sends.`;
+  if (estimate.count === 0) return `${NO_RECIPIENTS}.`;
+  if (estimate.count > ANNOUNCEMENT_RECIPIENT_MAX) {
+    return `${peopleCount(estimate.count)} match, over the server's limit of ${ANNOUNCEMENT_RECIPIENT_MAX.toLocaleString("en-IN")} per send. Narrow it down.`;
   }
+  return `${peopleCount(estimate.count)} would receive this now.`;
 }
 
 /**
  * Writes an in-app announcement and sends it through admin_send_notification. "Who receives
- * this" counts the audience with read-only queries before sending; the confirmation repeats
- * that count, and the count shown after sending is the server's. Gated by announcements.send.
+ * this" is the exact count from admin_count_recipients before sending (zero disables Send);
+ * the confirmation repeats it, and the count shown after sending is the one the send returns.
+ * Gated by announcements.send.
  */
 export function AnnouncementComposer({
   cities,
@@ -187,6 +183,10 @@ export function AnnouncementComposer({
       setError("Choose the person who receives it.");
       return;
     }
+    if (nobody) {
+      setError(`${NO_RECIPIENTS}. Choose another audience.`);
+      return;
+    }
     const input: SendAnnouncementInput = {
       segment,
       title,
@@ -223,10 +223,8 @@ export function AnnouncementComposer({
     });
   }
 
-  const exactCount =
-    currentEstimate?.status === "done" && currentEstimate.estimate.kind === "exact"
-      ? currentEstimate.estimate.count
-      : null;
+  const exactCount = currentEstimate?.status === "done" ? currentEstimate.estimate.count : null;
+  const nobody = exactCount === 0;
 
   return (
     <>
@@ -420,11 +418,16 @@ export function AnnouncementComposer({
             {lastSent}
           </p>
         ) : null}
-        <div>
-          <Button type="submit" disabled={pending}>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button type="submit" disabled={pending || nobody} aria-describedby={nobody ? "announcement-nobody" : undefined}>
             <Send size={16} aria-hidden="true" />
             Review and send
           </Button>
+          {nobody ? (
+            <p id="announcement-nobody" className="text-sm text-muted-foreground">
+              {NO_RECIPIENTS}.
+            </p>
+          ) : null}
         </div>
       </form>
 
@@ -438,7 +441,7 @@ export function AnnouncementComposer({
               {audienceSummary(audience, city, user)}.{" "}
               {currentEstimate?.status === "done"
                 ? estimateText(currentEstimate.estimate)
-                : "The server counts the recipients when it sends."}{" "}
+                : "The count did not load; the server counts the recipients when it sends."}{" "}
               It goes to each inbox at once and cannot be recalled.
             </DialogDescription>
           </DialogHeader>
@@ -452,7 +455,7 @@ export function AnnouncementComposer({
             <Button type="button" variant="outline" onClick={() => setConfirming(null)} disabled={pending}>
               Back
             </Button>
-            <Button type="button" onClick={send} disabled={pending}>
+            <Button type="button" onClick={send} disabled={pending || nobody}>
               {pending ? "Sending..." : "Send"}
             </Button>
           </DialogFooter>

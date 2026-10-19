@@ -3,14 +3,17 @@
  * decide what the session may see, so pages stay thin. Not for client components: they need
  * the server Supabase client.
  */
-import { listRoles, listUsers } from "@/lib/db/rbac";
-import { getSupportCase, listSupportCases, type SupportCaseDetail } from "@/lib/db/support";
+import {
+  getSupportCase,
+  listSupportCases,
+  listTeam,
+  type SupportCaseDetail,
+} from "@/lib/db/support";
 import { can } from "@/lib/rbac/can";
 import { toAppError } from "@/lib/supabase/errors";
 import type { AppSupabaseClient } from "@/lib/supabase/server";
 import type { SessionAccess } from "@/types/access";
 import type { SupportCaseListRow } from "@/types/database";
-import { USER_MAX_PAGE } from "@/features/users/schemas";
 import {
   SUPPORT_PAGE_SIZE,
   supportCaseIdSchema,
@@ -21,19 +24,16 @@ export type TeamMember = { id: string; name: string };
 
 /**
  * Who a case can be assigned to: users holding a role with is_admin, which is the rule
- * admin_update_support_case enforces. Listing them needs users.read (admin_list_users).
+ * admin_update_support_case enforces. admin_list_team returns all of them and needs
+ * support.read or users.read.
  */
 export type TeamState =
-  | {
-      kind: "ok";
-      members: TeamMember[];
-      /** admin_list_users returns at most 200 users, so admins beyond them are missing. */
-      capped: boolean;
-    }
+  | { kind: "ok"; members: TeamMember[] }
   | { kind: "hidden"; reason: string }
   | { kind: "error"; message: string };
 
-export const TEAM_NEEDS_USERS_READ = "Listing the team needs the View users permission.";
+export const TEAM_NEEDS_PERMISSION =
+  "Listing the team needs the View support cases or View users permission.";
 
 export type SupportQueueItem = {
   id: string;
@@ -68,18 +68,14 @@ export async function loadTeam(
   client: AppSupabaseClient,
   access: SessionAccess,
 ): Promise<TeamState> {
-  if (!can(access.permissions, "users.read")) return { kind: "hidden", reason: TEAM_NEEDS_USERS_READ };
+  if (!can(access.permissions, "support.read") && !can(access.permissions, "users.read")) {
+    return { kind: "hidden", reason: TEAM_NEEDS_PERMISSION };
+  }
   try {
-    const [roles, users] = await Promise.all([
-      listRoles(client),
-      listUsers(client, { query: "", limit: USER_MAX_PAGE, offset: 0 }),
-    ]);
-    const adminRoleKeys = new Set(roles.filter((role) => role.is_admin).map((role) => role.key));
-    const members = users
-      .filter((user) => user.roles.some((key) => adminRoleKeys.has(key)))
-      .map((user) => ({ id: user.id, name: user.full_name || user.email || "Unnamed" }))
-      .sort((a, b) => a.name.localeCompare(b.name, "en-IN", { sensitivity: "base" }));
-    return { kind: "ok", members, capped: users.length >= USER_MAX_PAGE };
+    const rows = await listTeam(client);
+    // The server orders by name; the fallbacks only cover an account without one.
+    const members = rows.map((row) => ({ id: row.id, name: row.name || row.email || "Unnamed" }));
+    return { kind: "ok", members };
   } catch (error) {
     return { kind: "error", message: toAppError(error).message };
   }

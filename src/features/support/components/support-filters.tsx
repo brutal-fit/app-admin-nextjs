@@ -152,9 +152,7 @@ export function SupportFilters({ filters, team }: { filters: Filters; team: Team
           ? team.reason
           : team.kind === "error"
             ? `The team list did not load: ${team.message}`
-            : team.capped
-              ? "Team members come from the 200 most recent accounts; older admins may be missing."
-              : "Team members are users holding an admin role."}
+            : "Team members are users holding an admin role."}
       </p>
     </div>
   );

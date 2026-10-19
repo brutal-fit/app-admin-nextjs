@@ -2,6 +2,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { StatusPulse } from "@/components/motion/status-pulse";
 import { BookingAddressCard } from "@/features/bookings/components/booking-address-card";
 import { BookingDetail } from "@/features/bookings/components/booking-detail";
+import { BookingDisputeCard } from "@/features/bookings/components/booking-dispute-card";
 import { BookingStatusBadge } from "@/features/bookings/components/booking-status-badge";
 import { BookingTimeline } from "@/features/bookings/components/booking-timeline";
 import { CancelBookingDialog } from "@/features/bookings/components/cancel-booking-dialog";
@@ -20,7 +21,7 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
   const access = await requireRoutePermission("/bookings/[id]");
   const { id } = await params;
   const supabase = await createSupabaseServerClient();
-  const result = await loadBookingDetail(supabase, access, id);
+  const result = await loadBookingDetail(supabase, id);
 
   if (!result.ok) {
     return (
@@ -33,10 +34,10 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
     );
   }
 
-  const { booking, summary, address } = result;
+  const { detail, address } = result;
+  const { booking, dispute } = detail;
   const cancellable = isCancellable(booking.status);
   const resolvable = canResolveDispute(booking.status, booking.dispute_resolved_at);
-  const dispute = summary?.dispute ?? null;
 
   return (
     <div className="flex flex-col gap-8">
@@ -53,15 +54,19 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
         description={<p>{formatSessionRange(booking.start_at, booking.end_at)}, India time.</p>}
       />
 
-      <BookingDetail booking={booking} summary={summary} permissions={access.permissions} />
+      <BookingDetail detail={detail} permissions={access.permissions} />
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <BookingTimeline booking={booking} dispute={dispute} permissions={access.permissions} />
-        <BookingAddressCard
-          address={address}
-          mode={booking.mode}
-          hasAddress={summary ? summary.has_address : null}
+        <BookingTimeline
+          booking={booking}
+          timeline={detail.timeline}
+          dispute={dispute}
+          permissions={access.permissions}
         />
+        <div className="flex flex-col gap-6">
+          <BookingDisputeCard dispute={dispute} permissions={access.permissions} />
+          <BookingAddressCard address={address} mode={booking.mode} hasAddress={detail.hasAddress} />
+        </div>
       </div>
 
       <section aria-labelledby="booking-actions" className="flex flex-col gap-3">

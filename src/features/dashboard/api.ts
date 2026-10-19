@@ -17,6 +17,7 @@ import {
   listAudit,
 } from "@/lib/db/dashboard";
 import { getUser, listUsers } from "@/lib/db/rbac";
+import { countPendingPrivacyRequests } from "@/lib/db/users";
 import { countReportedReviews } from "@/lib/db/reviews";
 import { can } from "@/lib/rbac/can";
 import { PERMISSIONS, type PermissionKey } from "@/lib/rbac/permissions";
@@ -36,6 +37,7 @@ import {
   applicationListHref,
 } from "@/features/applications/schemas";
 import { EMPTY_BOOKING_FILTERS, bookingListHref } from "@/features/bookings/schemas";
+import { EMPTY_PRIVACY_FILTERS, privacyListHref } from "@/features/privacy/schemas";
 import { EMPTY_REVIEW_FILTERS, reviewListHref } from "@/features/reviews/schemas";
 import { EMPTY_SUPPORT_FILTERS, supportListHref } from "@/features/support/schemas";
 import { USER_MAX_PAGE } from "@/features/users/schemas";
@@ -63,6 +65,7 @@ export type TileId =
   | "applications"
   | "documents"
   | "support"
+  | "privacy"
   | "bookings-today"
   | "booking-requests"
   | "reported-reviews"
@@ -114,6 +117,7 @@ export async function loadDashboardTiles(
     applications,
     documents,
     support,
+    privacy,
     bookingsToday,
     bookingRequests,
     reportedReviews,
@@ -141,6 +145,9 @@ export async function loadDashboardTiles(
       allowed("support.read")
         ? settle(async () => ({ kind: "count", value: await countOpenSupportCases(client) }))
         : Promise.resolve(needs("support.read")),
+      allowed("privacy.process")
+        ? settle(async () => ({ kind: "count", value: await countPendingPrivacyRequests(client) }))
+        : Promise.resolve(needs("privacy.process")),
       allowed("bookings.read")
         ? settle(async () => ({
             kind: "count",
@@ -208,6 +215,14 @@ export async function loadDashboardTiles(
       href: supportListHref(EMPTY_SUPPORT_FILTERS, { status: "open" }),
       urgent: true,
       value: support,
+    },
+    {
+      id: "privacy",
+      label: "Privacy requests pending",
+      hint: "Data exports and account deletions not yet completed or rejected.",
+      href: privacyListHref(EMPTY_PRIVACY_FILTERS, { status: "pending" }),
+      urgent: true,
+      value: privacy,
     },
     {
       id: "bookings-today",

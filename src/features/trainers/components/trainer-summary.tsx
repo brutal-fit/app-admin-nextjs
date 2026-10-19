@@ -18,7 +18,7 @@ const NONE = "Not set";
 
 /**
  * The profile as clients see it, plus where the application stands. Read-only; shown to
- * every session that may open the page (applications.read). The editable form sits beside
+ * every session that may open the page (trainers.read). The editable form sits beside
  * it for trainers.edit.
  */
 export function TrainerSummary({

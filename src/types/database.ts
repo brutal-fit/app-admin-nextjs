@@ -265,6 +265,31 @@ export type AdminBookingListRow = {
   created_at: string;
 };
 
+/** One row of admin_list_privacy_requests (20261019000800), needs privacy.process. */
+export type AdminPrivacyRequestListRow = {
+  id: string;
+  user_id: string;
+  user_name: string | null;
+  user_email: string | null;
+  kind: PrivacyRequestKind;
+  /** received until processed, then completed or rejected. */
+  status: string;
+  reason: string | null;
+  created_at: string;
+  resolved_at: string | null;
+  resolution_note: string | null;
+  /** Rows matching the filters across every page (bigint). */
+  total_count: number;
+};
+
+/** One row of admin_list_team (20261019000800): users holding an is_admin role. */
+export type AdminTeamRow = {
+  id: string;
+  name: string | null;
+  email: string | null;
+  roles: string[];
+};
+
 /** One row of admin_list_reviews (20261019000500), needs reviews.moderate. */
 export type AdminReviewListRow = {
   id: string;
@@ -742,6 +767,35 @@ export type Database = {
       admin_set_setting: {
         Args: { p_key: string; p_value: Json };
         Returns: Json;
+      };
+      admin_list_privacy_requests: {
+        Args: {
+          p_status?: "pending" | "received" | "completed" | "rejected" | null;
+          p_kind?: PrivacyRequestKind | null;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: AdminPrivacyRequestListRow[];
+      };
+      /** jsonb one booking (20261019000800): validated with Zod in src/lib/db/bookings.ts. */
+      admin_get_booking: {
+        Args: { p_id: string };
+        Returns: Json;
+      };
+      /** Needs support.read or users.read. */
+      admin_list_team: {
+        Args: Record<string, never>;
+        Returns: AdminTeamRow[];
+      };
+      /** How many active accounts the segment reaches now; needs announcements.send. */
+      admin_count_recipients: {
+        Args: { p_segment: Json };
+        Returns: number;
+      };
+      /** Audits a reset email the panel sent; needs users.manage. */
+      admin_note_password_reset: {
+        Args: { p_user: string };
+        Returns: undefined;
       };
       /** jsonb, the announcements row with recipient_count; needs announcements.send. */
       admin_send_notification: {

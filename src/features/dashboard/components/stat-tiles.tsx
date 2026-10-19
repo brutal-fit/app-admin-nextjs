@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   AlertCircle,
+  Archive,
   ArrowRight,
   Calendar,
   Clock,
@@ -21,6 +22,7 @@ const TILE_ICONS: Record<TileId, Icon> = {
   applications: Users,
   documents: FileText,
   support: LifeBuoy,
+  privacy: Archive,
   "bookings-today": Calendar,
   "booking-requests": Clock,
   "reported-reviews": Flag,

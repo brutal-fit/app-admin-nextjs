@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   Activity,
   AlertCircle,
+  Archive,
   ArrowRight,
   BarChart2,
   Bell,
@@ -40,6 +41,7 @@ import { analyticsHref } from "@/features/analytics/schemas";
 import { applicationListHref } from "@/features/applications/schemas";
 import { EMPTY_BOOKING_FILTERS, bookingListHref } from "@/features/bookings/schemas";
 import { catalogueHref } from "@/features/catalogue/schemas";
+import { EMPTY_PRIVACY_FILTERS, privacyListHref } from "@/features/privacy/schemas";
 import { EMPTY_REVIEW_FILTERS, reviewListHref } from "@/features/reviews/schemas";
 import { EMPTY_SUPPORT_FILTERS, supportListHref } from "@/features/support/schemas";
 import { listUsersAction } from "@/features/users/actions";
@@ -59,6 +61,7 @@ const PAGE_ICONS: Record<string, Icon> = {
   "/dashboard": Grid,
   "/applications": FileText,
   "/users": Users,
+  "/privacy": Archive,
   "/roles": Shield,
   "/trainers": UserCheck,
   "/support": LifeBuoy,
@@ -103,7 +106,7 @@ const JUMPS: readonly Jump[] = [
     id: "trainers-unlisted",
     label: "Trainers: not listed",
     href: "/trainers?listed=unlisted",
-    permission: "applications.read",
+    permission: "trainers.read",
   },
   {
     id: "bookings-requested",
@@ -128,6 +131,12 @@ const JUMPS: readonly Jump[] = [
     label: "Analytics: last 7 days",
     href: analyticsHref({ preset: 7 }),
     permission: "metrics.read",
+  },
+  {
+    id: "privacy-pending",
+    label: "Privacy: pending requests",
+    href: privacyListHref(EMPTY_PRIVACY_FILTERS, { status: "pending" }),
+    permission: "privacy.process",
   },
   {
     id: "users-joined-week",

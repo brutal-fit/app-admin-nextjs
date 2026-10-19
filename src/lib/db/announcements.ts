@@ -1,18 +1,18 @@
 /*
- * The announcements data layer: the only file in src/ that spells announcements and
- * admin_send_notification (20261019000600_adminops_catalogue_announcements.sql). History reads
- * need announcements.send (RLS); the function resolves the recipients, writes one
- * notifications row each and the announcement with its count, and audits the send. The
- * trainer city lookup feeds the panel's recipient estimate (RLS: applications.read). Every
- * wrapper throws AppError.
+ * The announcements data layer: the only file in src/ that spells announcements,
+ * admin_send_notification (20261019000600_adminops_catalogue_announcements.sql) and
+ * admin_count_recipients (20261019000800_adminops_round2.sql). History reads need
+ * announcements.send (RLS); the send resolves the recipients, writes one notifications row
+ * each and the announcement with its count, and audits the send; the count shares its
+ * audience rule. Every wrapper throws AppError.
  */
 import { z } from "zod";
 import { AppError, toAppError } from "@/lib/supabase/errors";
 import type { AppSupabaseClient } from "@/lib/supabase/server";
 import type { AnnouncementRow, AnnouncementSegmentJson, Json } from "@/types/database";
 
-const TABLE = { announcements: "announcements", applications: "trainer_applications" } as const;
-const RPC = { send: "admin_send_notification" } as const;
+const TABLE = { announcements: "announcements" } as const;
+const RPC = { send: "admin_send_notification", count: "admin_count_recipients" } as const;
 
 /** Newest first. */
 export async function listAnnouncements(
@@ -53,21 +53,14 @@ export async function sendAnnouncement(
 }
 
 /**
- * Trainers whose application names this city, compared as admin_send_notification does
- * (trimmed, case-insensitive). The ilike narrows the read; the exact test runs here.
+ * How many active accounts the segment reaches now, by the same audience rule the send uses
+ * (admin_count_recipients). No size or empty-audience check here; the send enforces those.
  */
-export async function listTrainerIdsInCity(
+export async function countRecipients(
   client: AppSupabaseClient,
-  city: string,
-): Promise<Set<string>> {
-  const wanted = city.trim().toLowerCase();
-  const pattern = `%${wanted.replace(/[\\%_]/g, (match) => `\\${match}`)}%`;
-  const { data, error } = await client
-    .from(TABLE.applications)
-    .select("trainer_id, city")
-    .ilike("city", pattern);
+  segment: AnnouncementSegmentJson,
+): Promise<number> {
+  const { data, error } = await client.rpc(RPC.count, { p_segment: segment as Json });
   if (error) throw toAppError(error);
-  return new Set(
-    data.filter((row) => row.city.trim().toLowerCase() === wanted).map((row) => row.trainer_id),
-  );
+  return Number(data);
 }

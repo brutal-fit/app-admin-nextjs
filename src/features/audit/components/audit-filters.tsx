@@ -221,9 +221,7 @@ export function AuditFilters({
           ? `${team.reason} Filter by an actor from a row instead.`
           : team.kind === "error"
             ? `The team list did not load: ${team.message}`
-            : team.capped
-              ? "Actors come from the 200 most recent accounts holding an admin role; filter older ones from a row."
-              : "Actors are users holding an admin role; a name in a row also filters by that actor."}
+            : "Actors are users holding an admin role; a name in a row also filters by that actor."}
       </p>
     </div>
   );

@@ -10,13 +10,6 @@ export const ANNOUNCEMENT_CITY_MAX = 80;
 /** The history table shows this many of the newest announcements. */
 export const ANNOUNCEMENT_HISTORY_LIMIT = 50;
 
-/**
- * The estimate pages through admin_list_users (200 a call) and stops after this many pages,
- * then reports a floor; the server's own count on send is the real one.
- */
-export const ESTIMATE_PAGE_SIZE = 200;
-export const ESTIMATE_MAX_PAGES = 25;
-
 export const AUDIENCES = ["all", "clients", "trainers", "user"] as const;
 export type Audience = (typeof AUDIENCES)[number];
 
@@ -114,12 +107,8 @@ export type SendAnnouncementInput = z.input<typeof sendAnnouncementSchema>;
 
 export const estimateRecipientsSchema = z.object({ segment: segmentSchema });
 
-/** What the panel could count before sending; the server's count on send is the real one. */
-export type RecipientEstimate =
-  | { kind: "exact"; count: number }
-  /** The scan stopped early; at least this many match. */
-  | { kind: "floor"; count: number; scanned: number }
-  | { kind: "unavailable"; reason: string };
+/** admin_count_recipients: who the segment reaches now, by the send's own audience rule. */
+export type RecipientEstimate = { count: number };
 
 /** "1 person", "12 people". */
 export function peopleCount(count: number): string {
