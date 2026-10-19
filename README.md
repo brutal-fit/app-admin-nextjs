@@ -25,7 +25,7 @@ Vercel project `app-admin-nextjs` in team `purvikbrutal`, linked to the GitHub r
 | URL | Builds from | Target |
 |---|---|---|
 | https://admin.brutal.fit | `main` | production |
-| https://admin-dev.brutal.fit | `dev` | preview, pinned to the `dev` branch |
+| https://admin-dev.brutal.fit | `dev` | preview, pinned to the `dev` branch; behind Vercel login while SSO protection is on |
 | `*.vercel.app` URLs | each push | behind Vercel login (SSO protection) |
 
 A push of `main` deploys production and a push of `dev` deploys the dev host; nothing else is
