@@ -8,6 +8,7 @@ import {
   listApplications,
   listAvailability,
   listDocuments,
+  listTrainerIdsWithUnreviewedDocuments,
   type ApplicationSummaryRow,
   type DocumentSummaryRow,
 } from "@/lib/db/applications";
@@ -19,6 +20,7 @@ import type { SessionAccess } from "@/types/access";
 import type { AvailabilityWindowRow, TrainerApplicationRow } from "@/types/database";
 import {
   APPLICATION_LIST_LIMIT,
+  filterStatuses,
   trainerIdSchema,
   type ApplicationFilter,
 } from "@/features/applications/schemas";
@@ -39,12 +41,19 @@ export type ApplicationListItem = {
   status: ApplicationSummaryRow["status"];
 };
 
+/**
+ * The unreviewed-documents filter: applied, not asked for, or asked for without
+ * documents.review (the table would return no rows, so the list ignores it and says why).
+ */
+export type DocumentsFilterState = "applied" | "off" | "needs-permission";
+
 export type ApplicationListResult =
   | {
       ok: true;
       rows: ApplicationListItem[];
       truncated: boolean;
       usernamesVisible: boolean;
+      documentsFilter: DocumentsFilterState;
     }
   | { ok: false; error: string };
 
@@ -80,11 +89,22 @@ export async function loadApplicationList(
   client: AppSupabaseClient,
   access: SessionAccess,
   filter: ApplicationFilter,
+  options: { unreviewedDocuments?: boolean } = {},
 ): Promise<ApplicationListResult> {
   try {
+    const documentsFilter: DocumentsFilterState = !options.unreviewedDocuments
+      ? "off"
+      : can(access.permissions, "documents.review")
+        ? "applied"
+        : "needs-permission";
+    const trainerIds =
+      documentsFilter === "applied" ? await listTrainerIdsWithUnreviewedDocuments(client) : null;
     const rows = await listApplications(client, {
-      status: filter === "all" ? null : filter,
+      statuses: filterStatuses(filter),
+      trainerIds,
       limit: APPLICATION_LIST_LIMIT,
+      // A queue reads oldest first; the plain list newest first.
+      oldestFirst: filter === "awaiting_review",
     });
     const usernamesVisible = can(access.permissions, "users.read");
     const usernames = usernamesVisible
@@ -97,6 +117,7 @@ export async function loadApplicationList(
       ok: true,
       truncated: rows.length >= APPLICATION_LIST_LIMIT,
       usernamesVisible,
+      documentsFilter,
       rows: rows.map((row) => ({
         trainerId: row.trainer_id,
         fullName: row.full_name,

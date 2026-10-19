@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ExternalLink, FileText } from "@/components/icons";
+import { StatusPulse } from "@/components/motion/status-pulse";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -52,9 +53,9 @@ export function DocumentList({ documents }: { documents: DocumentListItem[] }) {
   }
 
   return (
-    <ul className="flex max-w-3xl flex-col divide-y rounded-lg border bg-card">
+    <ul className="flex max-w-3xl flex-col divide-y rounded-lg border bg-card shadow-tile">
       {documents.map((item) => (
-        <li key={item.id} className="flex flex-col gap-3 px-4 py-3">
+        <li key={item.id} className="flex flex-col gap-3 px-4 py-3 transition-colors hover:bg-surface-raised">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex min-w-0 flex-col gap-1">
               <span className="text-sm font-medium">{DOCUMENT_KIND_LABELS[item.kind]}</span>
@@ -63,9 +64,11 @@ export function DocumentList({ documents }: { documents: DocumentListItem[] }) {
                 {formatBytes(item.size_bytes)}
               </span>
             </div>
-            <Badge variant="outline" className={documentStatusTone(item.status)}>
-              {DOCUMENT_STATUS_LABELS[item.status]}
-            </Badge>
+            <StatusPulse value={item.status} className={documentStatusTone(item.status)}>
+              <Badge variant="outline" className={documentStatusTone(item.status)}>
+                {DOCUMENT_STATUS_LABELS[item.status]}
+              </Badge>
+            </StatusPulse>
           </div>
           {item.note ? (
             <p className="text-sm text-muted-foreground">

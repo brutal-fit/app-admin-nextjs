@@ -2,18 +2,23 @@ import type { ReactNode } from "react";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Backdrop } from "@/components/art/backdrop";
+import { CommandPalette } from "@/components/layout/command-palette";
+import { GlobalShortcuts } from "@/components/layout/global-shortcuts";
+import { ShortcutSheet } from "@/components/layout/shortcut-sheet";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
-import { SignOutButton } from "@/components/layout/sign-out-button";
+import { Topbar } from "@/components/layout/topbar";
 import { can } from "@/lib/rbac/can";
 import { navItems, routePermission } from "@/lib/rbac/permissions";
 import { getSessionAccess } from "@/lib/rbac/session";
 import { PATHNAME_HEADER } from "@/lib/utils/request-headers";
+import { isServiceRoleConfigured } from "@/server/service-client";
 import { SessionStoreProvider } from "@/stores/session-store-provider";
 
 /**
  * Resolves the session, applies the route's permission on full page loads, and renders the
- * sidebar and header. Pages repeat the route check because layouts are not re-rendered on
- * client navigation.
+ * sidebar, topbar, backdrop, command palette and shortcut sheet. Pages repeat the route
+ * check because layouts are not re-rendered on client navigation.
  */
 export async function AdminShell({ children }: { children: ReactNode }) {
   const session = await getSessionAccess();
@@ -48,34 +53,36 @@ export async function AdminShell({ children }: { children: ReactNode }) {
 
   return (
     <SessionStoreProvider access={access}>
+      <a
+        href="#main"
+        className="focus-ring sr-only z-50 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+      >
+        Skip to content
+      </a>
       <div className="flex min-h-dvh">
-        <aside className="hidden w-60 shrink-0 flex-col gap-8 border-r border-border bg-card p-4 md:flex">
+        <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col gap-8 border-r border-border bg-card p-4 md:flex">
           <Link
             href="/dashboard"
-            className="px-3 text-lg font-extrabold tracking-widest focus-visible:outline-2 focus-visible:outline-ring"
+            className="focus-ring rounded-sm px-3 text-lg font-extrabold tracking-widest"
           >
             BRUTAL <span className="font-medium text-muted-foreground">admin</span>
           </Link>
           <SidebarNav items={items} />
+          <p className="mt-auto px-3 text-xs text-muted-foreground">
+            Press <kbd className="rounded-sm bg-muted px-1 font-sans">?</kbd> for shortcuts.
+          </p>
         </aside>
-        <div className="flex min-w-0 flex-1 flex-col">
-          <header className="flex flex-wrap items-center justify-between gap-4 border-b border-border px-6 py-3">
-            <div className="md:hidden">
-              <SidebarNav items={items} orientation="horizontal" />
-            </div>
-            <div className="ml-auto flex items-center gap-4">
-              <div className="text-right">
-                <p className="text-sm font-semibold">{access.fullName || "Admin"}</p>
-                <p className="text-xs text-muted-foreground">
-                  {access.roles.map((role) => role.name).join(", ")}
-                </p>
-              </div>
-              <SignOutButton />
-            </div>
-          </header>
-          <main className="flex-1 px-6 py-8">{children}</main>
+        <div className="relative isolate flex min-w-0 flex-1 flex-col">
+          <Backdrop />
+          <Topbar items={items} />
+          <main id="main" tabIndex={-1} className="flex-1 px-4 py-8 outline-none sm:px-6 lg:px-8">
+            <div className="mx-auto w-full max-w-7xl">{children}</div>
+          </main>
         </div>
       </div>
+      <CommandPalette serviceRoleConfigured={isServiceRoleConfigured()} />
+      <ShortcutSheet />
+      <GlobalShortcuts allowedHrefs={items.map((item) => item.href)} />
     </SessionStoreProvider>
   );
 }

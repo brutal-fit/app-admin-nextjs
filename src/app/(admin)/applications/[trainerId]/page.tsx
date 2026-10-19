@@ -1,9 +1,10 @@
-import Link from "next/link";
-import { ArrowLeft } from "@/components/icons";
+import { PageHeader } from "@/components/layout/page-header";
+import { StatusPulse } from "@/components/motion/status-pulse";
 import { Badge } from "@/components/ui/badge";
 import { ApplicationDetail } from "@/features/applications/components/application-detail";
 import { DecisionForm } from "@/features/applications/components/decision-form";
 import { DocumentList } from "@/features/applications/components/document-list";
+import { StatusTimeline } from "@/features/applications/components/status-timeline";
 import { loadApplicationDetail } from "@/features/applications/api";
 import { applicationStatusTone } from "@/features/applications/format";
 import { APPLICATION_STATUS_LABELS } from "@/features/applications/schemas";
@@ -11,8 +12,7 @@ import { can } from "@/lib/rbac/can";
 import { requireRoutePermission } from "@/lib/rbac/require-permission";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-const backLinkClass =
-  "inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
+const BACK = { href: "/applications", label: "Back to applications" };
 
 export default async function ApplicationDetailPage({
   params,
@@ -24,17 +24,10 @@ export default async function ApplicationDetailPage({
   const supabase = await createSupabaseServerClient();
   const result = await loadApplicationDetail(supabase, access, trainerId);
 
-  const backLink = (
-    <Link href="/applications" className={backLinkClass}>
-      <ArrowLeft size={16} aria-hidden="true" />
-      Back to applications
-    </Link>
-  );
-
   if (!result.ok) {
     return (
       <div className="flex flex-col gap-3">
-        {backLink}
+        <PageHeader title="Application" back={BACK} />
         <p role="alert" className="text-sm text-destructive">
           {result.error}
         </p>
@@ -46,20 +39,35 @@ export default async function ApplicationDetailPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-2">
-        {backLink}
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold">{application.full_name || "Unnamed"}</h1>
-          <Badge variant="outline" className={applicationStatusTone(application.status)}>
-            {APPLICATION_STATUS_LABELS[application.status]}
-          </Badge>
-        </div>
-        {application.reviewer_note ? (
-          <p className="max-w-3xl text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">Last note to the trainer: </span>
-            {application.reviewer_note}
-          </p>
-        ) : null}
+      <PageHeader
+        eyebrow="Trainer application"
+        title={application.full_name || "Unnamed"}
+        back={BACK}
+        status={
+          // Pulses once when a decision comes back from the server with a new status.
+          <StatusPulse value={application.status} className={applicationStatusTone(application.status)}>
+            <Badge variant="outline" className={applicationStatusTone(application.status)}>
+              {APPLICATION_STATUS_LABELS[application.status]}
+            </Badge>
+          </StatusPulse>
+        }
+        description={
+          application.reviewer_note ? (
+            <p>
+              <span className="font-medium text-foreground">Last note to the trainer: </span>
+              {application.reviewer_note}
+            </p>
+          ) : undefined
+        }
+      />
+
+      <div className="rounded-xl border bg-card p-5 shadow-tile">
+        <StatusTimeline
+          status={application.status}
+          createdAt={application.created_at}
+          submittedAt={application.submitted_at}
+          updatedAt={application.updated_at}
+        />
       </div>
 
       <ApplicationDetail

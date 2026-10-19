@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/layout/page-header";
 import { CreateRoleDialog } from "@/features/roles/components/create-role-dialog";
 import { RoleTable } from "@/features/roles/components/role-table";
 import { listRoles, type RoleSummary } from "@/lib/db/rbac";
@@ -14,21 +15,23 @@ async function loadRoles(): Promise<{ roles: RoleSummary[] } | { error: string }
   }
 }
 
-export default async function RolesPage() {
+export default async function RolesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   await requireRoutePermission("/roles");
+  const params = await searchParams;
   const result = await loadRoles();
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold">Roles</h1>
-          <p className="text-sm text-muted-foreground">
-            A role is a named set of permissions. Assign roles to people on the Users page.
-          </p>
-        </div>
-        <CreateRoleDialog />
-      </div>
+      <PageHeader
+        eyebrow="Access"
+        title="Roles"
+        description="A role is a named set of permissions. Assign roles to people on the Users page."
+        actions={<CreateRoleDialog defaultOpen={params.new === "role"} />}
+      />
       {"error" in result ? (
         <p role="alert" className="text-sm text-destructive">
           {result.error}

@@ -41,6 +41,22 @@
   --border: #3a3a3a;
   --input: #5a5a5a;
   --ring: #ff5656;
+
+  /*
+   * Elevations, lowest to highest: background, card (surface), surface-raised (hovered rows
+   * and tiles), popover. Each step is a little lighter, which is how depth reads on dark.
+   */
+  --surface-raised: #252525;
+  --shadow-tile: 0 1px 0 0 rgb(255 255 255 / 0.04) inset, 0 12px 28px -18px rgb(0 0 0 / 0.9);
+  --shadow-tile-hover: 0 1px 0 0 rgb(255 255 255 / 0.06) inset,
+    0 18px 36px -20px rgb(0 0 0 / 0.95), 0 0 0 1px rgb(255 86 86 / 0.25);
+
+  /* The red glow behind the page header, like the app's: the accent at low strength. */
+  --glow: rgb(255 86 86 / 0.14);
+
+  /* One focus ring for everything we draw ourselves. */
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
 }
 
 /*
@@ -76,6 +92,11 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-surface-raised: var(--surface-raised);
+  --color-glow: var(--glow);
+
+  --shadow-tile: var(--shadow-tile);
+  --shadow-tile-hover: var(--shadow-tile-hover);
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -95,5 +116,46 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* The visible focus ring for our own interactive elements (links, chips, rows, tiles). */
+@utility focus-ring {
+  &:focus-visible {
+    outline: var(--focus-ring-width) solid var(--ring);
+    outline-offset: var(--focus-ring-offset);
+  }
+}
+
+/* The header glow: a soft accent radial that fades to nothing at its edge. */
+@utility glow-radial {
+  background: radial-gradient(closest-side, var(--glow), transparent);
+}
+
+/*
+ * Dialogs settle in from 0.98 instead of shadcn's 0.95: a settle, not a zoom. Unlayered, so
+ * it wins over the generated zoom utilities without editing the generated file.
+ */
+[data-slot="dialog-content"][data-state] {
+  --tw-enter-scale: 0.98;
+  --tw-exit-scale: 0.98;
+}
+
+/*
+ * Reduced motion: every animation and transition finishes at once, and anything a motion
+ * component started hidden (data-motion) shows in its final state even before scripts run.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  [data-motion] {
+    opacity: 1 !important;
+    transform: none !important;
   }
 }

@@ -18,7 +18,18 @@ export const APPLICATION_FILTERS = [
   "suspended",
 ] as const;
 
-export type ApplicationFilter = (typeof APPLICATION_FILTERS)[number];
+/** Statuses that still wait for ops: the dashboard tile and the "Awaiting review" filter. */
+export const AWAITING_REVIEW_STATUSES = [
+  "submitted",
+  "under_review",
+] as const satisfies readonly ApplicationStatus[];
+
+/** Filters that span several statuses, shown as quick filters beside the status chips. */
+export const APPLICATION_QUICK_FILTERS = ["awaiting_review"] as const;
+
+export type ApplicationFilter =
+  | (typeof APPLICATION_FILTERS)[number]
+  | (typeof APPLICATION_QUICK_FILTERS)[number];
 
 /** The statuses review_application accepts (it refuses draft and submitted with BRVAL). */
 export const REVIEW_DECISIONS = [
@@ -48,6 +59,7 @@ export const APPLICATION_STATUS_LABELS: Record<ApplicationStatus, string> = {
 
 export const FILTER_LABELS: Record<ApplicationFilter, string> = {
   all: "All",
+  awaiting_review: "Awaiting review",
   ...APPLICATION_STATUS_LABELS,
 };
 
@@ -88,9 +100,30 @@ export const APPLICATION_LIST_LIMIT = 200;
 /** Reads the `?status=` search param; anything unknown falls back to "all". */
 export function parseApplicationFilter(value: string | string[] | undefined): ApplicationFilter {
   const raw = Array.isArray(value) ? value[0] : value;
-  return (APPLICATION_FILTERS as readonly string[]).includes(raw ?? "")
-    ? (raw as ApplicationFilter)
-    : "all";
+  const known: readonly string[] = [...APPLICATION_FILTERS, ...APPLICATION_QUICK_FILTERS];
+  return known.includes(raw ?? "") ? (raw as ApplicationFilter) : "all";
+}
+
+/** The statuses a filter lists; null means every non-draft status. */
+export function filterStatuses(filter: ApplicationFilter): readonly ApplicationStatus[] | null {
+  if (filter === "all") return null;
+  if (filter === "awaiting_review") return AWAITING_REVIEW_STATUSES;
+  return [filter];
+}
+
+/** Reads `?documents=unreviewed`: only trainers with a document waiting for review. */
+export function parseDocumentsFilter(value: string | string[] | undefined): boolean {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return raw === "unreviewed";
+}
+
+/** The list URL for a filter combination; the dashboard tiles link here too. */
+export function applicationListHref(filter: ApplicationFilter, unreviewedDocuments = false): string {
+  const params = new URLSearchParams();
+  if (filter !== "all") params.set("status", filter);
+  if (unreviewedDocuments) params.set("documents", "unreviewed");
+  const query = params.toString();
+  return query ? `/applications?${query}` : "/applications";
 }
 
 // Same range as the services.price_inr and expected-rate checks in the database.

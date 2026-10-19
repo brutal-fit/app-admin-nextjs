@@ -1,5 +1,5 @@
-import Link from "next/link";
-import { ArrowLeft } from "@/components/icons";
+import { PageHeader } from "@/components/layout/page-header";
+import { StatusPulse } from "@/components/motion/status-pulse";
 import { Can } from "@/components/rbac/can";
 import { Badge } from "@/components/ui/badge";
 import { GrantTrainerAccess } from "@/features/users/components/grant-trainer-access";
@@ -35,6 +35,12 @@ async function loadUser(userId: string) {
   }
 }
 
+const BACK = { href: "/users", label: "Back to users" };
+
+function statusTone(status: "active" | "suspended"): string {
+  return status === "active" ? "border-success text-success" : "border-destructive text-destructive";
+}
+
 export default async function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await requireRoutePermission("/users/[id]");
   const { id } = await params;
@@ -43,10 +49,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
   if (!result.ok) {
     return (
       <div className="flex flex-col gap-3">
-        <Link href="/users" className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-          <ArrowLeft size={16} aria-hidden="true" />
-          Back to users
-        </Link>
+        <PageHeader title="User" back={BACK} />
         <p role="alert" className="text-sm text-destructive">
           {result.error}
         </p>
@@ -58,25 +61,19 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-2">
-        <Link href="/users" className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-          <ArrowLeft size={16} aria-hidden="true" />
-          Back to users
-        </Link>
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold">{user.full_name || "Unnamed"}</h1>
-          <Badge
-            variant="outline"
-            className={
-              user.account_status === "active"
-                ? "border-success text-success"
-                : "border-destructive text-destructive"
-            }
-          >
-            {user.account_status}
-          </Badge>
-        </div>
-        <dl className="grid max-w-xl grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm">
+      <PageHeader
+        eyebrow="User"
+        title={user.full_name || "Unnamed"}
+        back={BACK}
+        status={
+          <StatusPulse value={user.account_status} className={statusTone(user.account_status)}>
+            <Badge variant="outline" className={statusTone(user.account_status)}>
+              {user.account_status}
+            </Badge>
+          </StatusPulse>
+        }
+      >
+        <dl className="grid max-w-xl grid-cols-[auto_1fr] gap-x-6 gap-y-1 rounded-xl border bg-card p-4 text-sm shadow-tile">
           <dt className="text-muted-foreground">Email</dt>
           <dd>{user.email ?? "No email"}</dd>
           <dt className="text-muted-foreground">App role</dt>
@@ -84,7 +81,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
           <dt className="text-muted-foreground">Joined</dt>
           <dd>{new Date(user.created_at).toLocaleDateString("en-IN")}</dd>
         </dl>
-      </div>
+      </PageHeader>
 
       <section aria-labelledby="user-roles" className="flex max-w-2xl flex-col gap-4">
         <h2 id="user-roles" className="text-lg font-semibold">

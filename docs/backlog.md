@@ -11,4 +11,5 @@ Prioritised. Status: todo, in progress, done (with date and handoff dir or commi
 | AD-05 | Audit log viewer (`private.admin_audit_log` through a function) | todo |
 | AD-06 | Vitest: registry matches the seeded permissions; `can()` helpers; error mapping; render tests for the five screens; form limits and group fix | in progress, task-12 |
 | AD-08 | Create a `dev` branch to match the other repos (owner's call; work sits on `main`) | todo, owner |
+| AD-09 | Panel polish (task 19): "needs me now" dashboard, command palette, shortcuts, motion, fitness backdrop, sortable keyboard tables, application timeline | in progress, task-19: landed 2026-10-19; render tests with the assistant |
 | AD-07 | Deployment target (Vercel or similar) and the production env | todo, owner decision |

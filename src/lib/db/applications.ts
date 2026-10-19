@@ -37,24 +37,86 @@ export type ApplicationSummaryRow = Pick<
 >;
 
 /**
- * Applications for the review list, newest submission first. Drafts are never listed: a
- * draft has not been sent to BRUTAL yet.
+ * Applications for the review list. Drafts are never listed: a draft has not been sent to
+ * BRUTAL yet. `statuses` null means every non-draft status; `trainerIds` narrows the list to
+ * those trainers (an empty array returns nothing without a query).
  */
 export async function listApplications(
   client: AppSupabaseClient,
-  input: { status: ApplicationStatus | null; limit: number },
+  input: {
+    statuses: readonly ApplicationStatus[] | null;
+    limit: number;
+    trainerIds?: readonly string[] | null;
+    /** Oldest submission first (a review queue) instead of newest first. */
+    oldestFirst?: boolean;
+  },
 ): Promise<ApplicationSummaryRow[]> {
+  if (input.trainerIds && input.trainerIds.length === 0) return [];
   let query = client
     .from(TABLE.applications)
     .select("trainer_id, full_name, city, modes, submitted_at, status")
     .neq("status", "draft");
-  if (input.status) query = query.eq("status", input.status);
+  if (input.statuses) query = query.in("status", [...input.statuses]);
+  if (input.trainerIds) query = query.in("trainer_id", [...input.trainerIds]);
   const { data, error } = await query
-    .order("submitted_at", { ascending: false, nullsFirst: false })
+    .order("submitted_at", { ascending: input.oldestFirst ?? false, nullsFirst: false })
     .order("trainer_id")
     .limit(input.limit);
   if (error) throw toAppError(error);
   return data;
+}
+
+/** How many non-draft applications are in these statuses (a head count, no rows). */
+export async function countApplications(
+  client: AppSupabaseClient,
+  statuses: readonly ApplicationStatus[],
+): Promise<number> {
+  const { count, error } = await client
+    .from(TABLE.applications)
+    .select("trainer_id", { count: "exact", head: true })
+    .in("status", [...statuses]);
+  if (error) throw toAppError(error);
+  return count ?? 0;
+}
+
+/** Applicant names for a set of trainers (activity feed targets). */
+export async function listApplicantNames(
+  client: AppSupabaseClient,
+  trainerIds: readonly string[],
+): Promise<Map<string, string>> {
+  if (trainerIds.length === 0) return new Map();
+  const { data, error } = await client
+    .from(TABLE.applications)
+    .select("trainer_id, full_name")
+    .in("trainer_id", [...trainerIds]);
+  if (error) throw toAppError(error);
+  return new Map(data.map((row) => [row.trainer_id, row.full_name]));
+}
+
+/** Documents uploaded and not yet accepted or rejected (a head count). */
+export async function countUnreviewedDocuments(client: AppSupabaseClient): Promise<number> {
+  const { count, error } = await client
+    .from(TABLE.documents)
+    .select("id", { count: "exact", head: true })
+    .eq("status", "uploaded");
+  if (error) throw toAppError(error);
+  return count ?? 0;
+}
+
+// Enough for every trainer with a pending document at today's scale; the list says when hit.
+export const UNREVIEWED_DOCUMENT_SCAN_LIMIT = 1000;
+
+/** Trainers with at least one document waiting for review, for the list's document filter. */
+export async function listTrainerIdsWithUnreviewedDocuments(
+  client: AppSupabaseClient,
+): Promise<string[]> {
+  const { data, error } = await client
+    .from(TABLE.documents)
+    .select("trainer_id")
+    .eq("status", "uploaded")
+    .limit(UNREVIEWED_DOCUMENT_SCAN_LIMIT);
+  if (error) throw toAppError(error);
+  return [...new Set(data.map((row) => row.trainer_id))];
 }
 
 export async function getApplication(

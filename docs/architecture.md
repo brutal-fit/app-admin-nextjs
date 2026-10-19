@@ -19,6 +19,7 @@ function fixes the matching row in the same change.
 | Tests | Vitest 5 + jsdom + Testing Library, `vitest.config.mts`, `passWithNoTests` until AD-06 |
 | UI primitives | shadcn/ui CLI 4.22 (`components.json`: style `new-york`, Radix base, base colour neutral, CSS variables, `rsc`); `radix-ui`, `class-variance-authority`, `cn` (shadcn's class merger, replaces clsx + tailwind-merge), `tw-animate-css`, `sonner`, `next-themes` (pulled in by the generated `sonner`, no provider mounted), `lucide-react` (generated files only) |
 | Icons | `react-feather` 2.0, imported only through `src/components/icons.ts` |
+| Motion, palette | `motion` 14.3 (`motion/react`: page fade, stagger, count-up, status pulse, sidebar indicator), `cmdk` 1.1 (behind the generated shadcn `command`); task 19 |
 | Dev server | `npm run dev` on port 3100 |
 
 ## Request flow
@@ -31,7 +32,8 @@ function fixes the matching row in the same change.
    `getSessionAccess()`, redirects (`/login`, `/login?reason=no-access`, `/forbidden`), applies
    `routePermission` to the current path, and renders the sidebar and header.
 3. Every `(admin)` page calls `requireRoutePermission('<its pattern>')` too, because layouts
-   do not re-render on client navigation.
+   do not re-render on client navigation. `src/app/(admin)/template.tsx` wraps each page in
+   `FadeIn` (a template remounts per navigation, so every page fades in).
 4. Mutations: client component -> server action -> Zod -> `requirePermission` ->
    `src/lib/db/rbac.ts` -> `rpc()` -> `refresh()`; errors come back as `ActionResult` and show
    as toasts. No optimistic state.
@@ -42,16 +44,17 @@ function fixes the matching row in the same change.
 |---|---|---|---|
 | `/` | `src/app/page.tsx` | none | Redirects to `/dashboard` or `/login` from the session. |
 | `/login` | `src/app/(auth)/login/page.tsx` | public | Email + password; sign-in is refused (signed out, "This account has no admin role.") unless `hasPanelAccess`; `?reason=no-access` shows the same message. |
-| `/dashboard` | `src/app/(admin)/dashboard/page.tsx` | open (any admin) | Counts: users (`users.read`), roles. Failures show the mapped error. |
+| `/dashboard` | `src/app/(admin)/dashboard/page.tsx` | open (any admin) | "Needs me now": six tiles (applications awaiting review `applications.read`, documents to review `documents.review`, open support cases `support.read`, bookings today and booking requests pending `bookings.read`, new users last 7 days `users.read`), each streamed in its own Suspense; a tile without its permission says which one it needs. Below: review queue (oldest five awaiting, `applications.read`) and activity (`admin_list_audit`, `audit.read`). |
 | `/forbidden` | `src/app/(admin)/forbidden/page.tsx` | open (any admin) | Target of every failed route check. |
-| `/roles` | `src/app/(admin)/roles/page.tsx` | `rbac.manage` | Table (Type badge, "Admin" panel-access badge for `is_admin`) and "New role" dialog. |
+| `/roles` | `src/app/(admin)/roles/page.tsx` | `rbac.manage` | Table (Type badge, "Admin" panel-access badge for `is_admin`, toggle chips System / Custom / Grants panel access) and "New role" dialog; `?new=role` opens it (command palette). |
 | `/roles/[id]` | `src/app/(admin)/roles/[id]/page.tsx` | `rbac.manage` | Details form (name, description, "Grants admin panel access"), permission grid, delete; all locked for system roles with the reason. |
-| `/users` | `src/app/(admin)/users/page.tsx` | `users.read` | Debounced search; "New user" (`users.manage`, needs the service role key). |
+| `/users` | `src/app/(admin)/users/page.tsx` | `users.read` | Debounced search, toggle chips over the loaded rows (joined last 7 days, trainers, clients, suspended, has admin roles); `?joined=week` pre-applies the first and loads 200 rows; "New user" (`users.manage`, needs the service role key), `?new=user` opens it. |
 | `/users/[id]` | `src/app/(admin)/users/[id]/page.tsx` | `users.read` | Roles assign/revoke and "Grant trainer app access" (`users.manage`). |
-| `/applications` | `src/app/(admin)/applications/page.tsx` | `applications.read` | Status chips (`?status=`, all = every non-draft), name, @username (needs `users.read`, else "Hidden"), city, modes, submitted, status; 200 rows max with a note. |
-| `/applications/[trainerId]` | `src/app/(admin)/applications/[trainerId]/page.tsx` | `applications.read` | Answers (profile, experience, services and expected rates, availability, documents). Documents section needs `documents.review`; decision form needs `applications.review`; each says why when missing. |
+| `/applications` | `src/app/(admin)/applications/page.tsx` | `applications.read` | Status chips (`?status=`, all = every non-draft), quick filters `?status=awaiting_review` (submitted + under review, oldest first) and `?documents=unreviewed` (trainers with an uploaded document; needs `documents.review`, else ignored with a note), clear all; sortable name, @username (needs `users.read`, else "Hidden"), city, modes, submitted, status; 200 rows max with a note. |
+| `/applications/[trainerId]` | `src/app/(admin)/applications/[trainerId]/page.tsx` | `applications.read` | Status timeline (draft, submitted, under review, needs information, decision; times from `created_at`, `submitted_at`, `updated_at`), answers (profile, experience, services and expected rates, availability, documents). Documents section needs `documents.review`; decision form needs `applications.review`; each says why when missing. |
 | `POST /api/users/create` | `src/app/api/users/create/route.ts` | `users.manage` | 503 "Service role key not configured" without the key; creates a confirmed auth user, then assigns roles with the caller's session. |
 | loading state | `src/app/(admin)/loading.tsx` | - | Page-level Suspense fallback. |
+| page transition | `src/app/(admin)/template.tsx` | - | `FadeIn` around every page (fade and 8px rise, 180 ms). |
 
 ## Permission registry (`src/lib/rbac/`)
 
@@ -74,7 +77,7 @@ function fixes the matching row in the same change.
 
 ## Data layer (`src/lib/db/`)
 
-`rbac.ts` and `applications.ts` are the only files that spell table, bucket or function names (the hand-written types in
+`rbac.ts`, `applications.ts` and `dashboard.ts` are the only files that spell table, bucket or function names (the hand-written types in
 `src/types/database.ts` name them as types). Built against the task 05 contract (approved 2026-10-19),
 which is not applied yet; every call fails today with `NOT_INSTALLED`.
 
@@ -91,12 +94,22 @@ which is not applied yet; every call fails today with `NOT_INSTALLED`.
 
 | Wrapper | Calls |
 |---|---|
-| `listApplications`, `getApplication`, `getApplicationModes` | `trainer_applications` selects (drafts never listed) |
+| `listApplications`, `getApplication`, `getApplicationModes` | `trainer_applications` selects (drafts never listed); `listApplications({ statuses, trainerIds, limit, oldestFirst })` |
+| `countApplications`, `listApplicantNames` | `trainer_applications` head count by statuses; names by trainer ids (activity feed) |
+| `countUnreviewedDocuments`, `listTrainerIdsWithUnreviewedDocuments` | `trainer_documents` with `status = 'uploaded'` (head count; distinct trainer ids, scan capped at 1000) |
 | `listDocuments` | `trainer_documents` select without `storage_path` (the path never reaches the client) |
 | `listAvailability` | `availability_windows` select |
 | `createDocumentSignedUrl` | path looked up by document id, then `storage.from('trainer-documents').createSignedUrl(path, 300)` with the admin's session |
 | `reviewApplication` | `review_application(p_trainer, p_status, p_note, p_home_rate_inr, p_online_rate_inr, p_verified_checks, p_availability_tags => null)` |
 | `reviewDocument` | `review_document(p_document, p_status, p_note)` |
+
+`dashboard.ts` (reads with the admin's session):
+
+| Wrapper | Calls |
+|---|---|
+| `countOpenSupportCases` | `support_cases` head count, status open / triaged / waiting_for_user / investigating / escalated (RLS: `support.read`) |
+| `countBookingsStarting`, `countPendingBookingRequests` | `bookings` head counts: start in a range and not cancelled; status `requested` (RLS still `private.is_admin()`; the panel gates on `bookings.read`) |
+| `listAudit` | `admin_list_audit(p_limit, p_offset)` (`audit.read`) |
 
 ## Supabase and errors (`src/lib/supabase/`, `src/server/`)
 
@@ -115,25 +128,32 @@ which is not applied yet; every call fails today with `NOT_INSTALLED`.
 |---|---|
 | auth | `src/features/auth/{actions.ts (signInAction, signOutAction), schemas.ts, components/login-form.tsx}` |
 | roles | `src/features/roles/{actions.ts, schemas.ts, components/{create-role-dialog, role-table, role-form, permission-grid, delete-role-button}.tsx}` |
-| users | `src/features/users/{actions.ts, schemas.ts, components/{user-search, user-table, user-roles-panel, grant-trainer-access, create-user-dialog}.tsx}` |
-| applications | `src/features/applications/{api.ts (loadApplicationList, loadApplicationDetail: server loaders, usernames via admin_get_user only with users.read), actions.ts (reviewApplicationAction, reviewDocumentAction, openDocumentAction), schemas.ts (filters, decisions, verified checks, labels, missingPriceMessage), format.ts (INR, bytes, times, status tones), components/{application-table, application-detail, document-list, document-verdict-dialog, decision-form}.tsx}`. Approval needs a platform price for every offered mode: checked in the form and again in the action against the modes read from the database. |
+| users | `src/features/users/{actions.ts, schemas.ts (USER_PAGE_SIZE 50, USER_MAX_PAGE 200, USER_FILTERS, parseUserFilters), components/{user-search (search + toggle chips), user-table (client, DataTable), user-roles-panel, grant-trainer-access, create-user-dialog}.tsx}` |
+| dashboard | `src/features/dashboard/{api.ts (loadDashboardTiles, loadReviewQueue, loadActivity: server loaders, each settles on its own), format.ts (describeAuditEntry: audit row to verb and target link, gated by permission), components/{stat-tiles, review-queue, activity-feed, section-skeleton}.tsx}` |
+| applications | `src/features/applications/{api.ts (loadApplicationList with the documents filter state, loadApplicationDetail: server loaders, usernames via admin_get_user only with users.read), actions.ts (reviewApplicationAction, reviewDocumentAction, openDocumentAction), schemas.ts (status filters, quick filter awaiting_review, filterStatuses, parseDocumentsFilter, applicationListHref, decisions, verified checks, labels, missingPriceMessage), format.ts (INR, bytes, times, status tones), components/{application-table (client, DataTable), application-detail, status-timeline, document-list, document-verdict-dialog, decision-form}.tsx}`. Approval needs a platform price for every offered mode: checked in the form and again in the action against the modes read from the database. |
 
 ## Stores (`src/stores/`)
 
 | Store | Holds |
 |---|---|
 | `session-store.ts` + `session-store-provider.tsx` | `access`, `setAccess`, `clear`. One store per request tree via context (a module singleton would share one admin's access across server renders). Read with `useSessionStore`. |
+| `command-store.ts` | `paletteOpen`, `shortcutsOpen` and setters (opening one closes the other). A module store: UI state only, changed only by browser events. |
 | `toast-store.ts` | Not a store any more: `showToast(tone, message)` is a thin wrapper over sonner's `toast`, kept so features never import sonner directly. |
 
 ## Shared components
 
 | Path | Components |
 |---|---|
-| `src/components/ui/` | CLI-generated shadcn/ui, not edited by hand: `button`, `input`, `label`, `select` (Radix), `checkbox` (Radix; renders a hidden input inside a form), `badge`, `table`, `dialog` (Radix), `dropdown-menu`, `textarea`, `sonner` (`Toaster`, mounted in the root layout with `theme="dark"`), `skeleton`, `separator`, `card`. The one hand-written file is `empty-state` (a dashed `Card`; shadcn has none). Status badges are `variant="outline"` plus `border-success text-success`, `border-warning text-warning`, `border-destructive text-destructive` or `text-muted-foreground`. |
+| `src/components/ui/` | CLI-generated shadcn/ui, not edited by hand: `button`, `input`, `label`, `select` (Radix), `checkbox` (Radix; renders a hidden input inside a form), `badge`, `table`, `dialog` (Radix), `dropdown-menu`, `textarea`, `sonner` (`Toaster`, mounted in the root layout with `theme="dark"`), `skeleton`, `separator`, `card`, `command` (cmdk), `sheet`, `kbd` (task 19). The one hand-written file is `empty-state` (a dashed `Card`; shadcn has none). Status badges are `variant="outline"` plus `border-success text-success`, `border-warning text-warning`, `border-destructive text-destructive` or `text-muted-foreground`. |
 | `src/components/icons.ts` | Named re-exports of the `react-feather` icons we place (size 16 or 18, stroke 2). Nothing outside `src/components/ui` imports `lucide-react`. |
 | `src/lib/utils.ts` | `cn` (CLI-generated; re-exports the `cn` package). Replaces the old `src/lib/utils/cn.ts`. |
 | `src/components/rbac/can.tsx` | `<Can permission fallback>` (client) |
-| `src/components/layout/` | `admin-shell` (server), `sidebar-nav`, `sign-out-button` |
+| `src/components/layout/` | `admin-shell` (server: sidebar, backdrop, topbar, palette, sheet, shortcuts), `sidebar-nav` (motion `layoutId` active indicator, "g x" hints), `topbar` (breadcrumbs, palette trigger, "?" button, name and roles, sign out; mobile nav), `breadcrumbs` (from the path), `command-palette` (cmdk: permitted pages, quick filters, debounced `listUsersAction` user search with `users.read`, New role `rbac.manage`, Invite user `users.manage` disabled with the reason without the service role key), `shortcut-sheet`, `global-shortcuts` (the one window key listener), `page-header` (back link, eyebrow, h1, status, description, actions), `sign-out-button`, `use-apple-platform` |
+| `src/components/data-table/` | `data-table` (client: sticky header, in-memory sort with `aria-sort`, result count, hover quick actions, j/k or arrows and Enter on rows, skeleton rows, empty state, first-paint stagger), `filter-chips` (link or toggle chips, clear all) |
+| `src/components/motion/` | `fade-in`, `stagger-list` (`StaggerList`, `StaggerItem`; 40 ms, first paint only), `count-up` (600 ms ease-out; markup always holds the real value), `status-pulse` (one ring when the value changes after a server response), `use-reduced-motion` (live `matchMedia`, so tests can toggle it). Every one renders the final state under `prefers-reduced-motion`; animated elements carry `data-motion` so the CSS override in `globals.css` applies before scripts run. |
+| `src/components/art/` | `silhouettes` (runner, boxer, kettlebell swing, plank, dumbbell, jump rope as single-stroke `<g>` glyphs on a 64 grid, `currentColor`; `Silhouette` for standalone use), `backdrop` (one SVG pattern of the glyphs with rotation and scale variance at `BACKDROP_OPACITY` 0.045 plus the accent glow top-left; `aria-hidden`, `pointer-events: none`, behind the content column; contrast worked in the file comment, darkest text 5.7:1 at the lightest spot) |
+| `src/lib/shortcuts.ts` | `SHORTCUTS`, `SHORTCUT_GROUPS`, `GO_TO_TARGETS` (g then d/a/u/r), `matchShortcut(input, state, now, typing)` (pure; Mod+K, "/", "?", "g" sequence within `SEQUENCE_TIMEOUT_MS`, j/k), `isTypingTarget`, `keyLabel` |
+| `src/lib/utils/time.ts` | `currentTime`, `daysAgoIso`, `istDayRange`, `istHour`, `formatRelativeTime`, `formatWaiting` (India time; the clock is read here, not in components) |
 
 ## Theme
 
@@ -144,7 +164,11 @@ there is no light set and no `.dark` block). `background #161616`, `foreground`,
 (4.5:1; primary actions and the active nav item only), `secondary`, `muted`, `accent` (in
 shadcn this is the neutral hover surface, not the brand accent), `muted-foreground`,
 `destructive`, `border`, `input` (stronger border), `ring #FF5656`, plus `success` and
-`warning`; `--radius 0.5rem`. `@theme inline` maps them to utilities; the default Tailwind
+`warning`; `--radius 0.5rem`. Task 19 adds `surface-raised` (hovered rows and tiles), `shadow-tile`
+and `shadow-tile-hover`, `glow` (accent at 14%, used by the `glow-radial` utility), the
+`focus-ring` utility (2px `ring` outline, 2px offset), dialogs entering from scale 0.98, and a
+`prefers-reduced-motion` block that ends every animation at once and shows `[data-motion]`
+elements in their final state. `@theme inline` maps them to utilities; the default Tailwind
 palette is cleared except `white` and `black`, which the generated overlay and destructive
 styles use. Montserrat through `next/font/google` as `--font-sans`.
 

@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { ArrowLeft } from "@/components/icons";
+import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { DeleteRoleButton } from "@/features/roles/components/delete-role-button";
 import { PermissionGrid } from "@/features/roles/components/permission-grid";
@@ -8,6 +7,8 @@ import { getRole, type RoleDetail } from "@/lib/db/rbac";
 import { requireRoutePermission } from "@/lib/rbac/require-permission";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { toAppError } from "@/lib/supabase/errors";
+
+const BACK = { href: "/roles", label: "Back to roles" };
 
 const SYSTEM_ROLE_REASON = "System roles hold every permission and cannot be edited or deleted.";
 
@@ -28,10 +29,7 @@ export default async function RoleDetailPage({ params }: { params: Promise<{ id:
   if ("error" in result) {
     return (
       <div className="flex flex-col gap-3">
-        <Link href="/roles" className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-          <ArrowLeft size={16} aria-hidden="true" />
-          Back to roles
-        </Link>
+        <PageHeader title="Role" back={BACK} />
         <p role="alert" className="text-sm text-destructive">
           {result.error}
         </p>
@@ -44,21 +42,19 @@ export default async function RoleDetailPage({ params }: { params: Promise<{ id:
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-2">
-        <Link href="/roles" className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-          <ArrowLeft size={16} aria-hidden="true" />
-          Back to roles
-        </Link>
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold">{role.name}</h1>
-          {role.is_system ? (
+      <PageHeader
+        eyebrow="Role"
+        title={role.name}
+        back={BACK}
+        status={
+          role.is_system ? (
             <Badge variant="outline" className="border-warning text-warning">
               System
             </Badge>
-          ) : null}
-        </div>
-        <code className="text-xs text-muted-foreground">{role.key}</code>
-      </div>
+          ) : null
+        }
+        description={<code className="text-xs">{role.key}</code>}
+      />
 
       <section aria-labelledby="role-details" className="flex max-w-xl flex-col gap-4">
         <h2 id="role-details" className="text-lg font-semibold">

@@ -5,6 +5,20 @@ const roleId = z.guid("Choose a role.");
 
 export const USER_PAGE_SIZE = 50;
 
+/** The most rows admin_list_users returns in one call; the "joined" link loads this many. */
+export const USER_MAX_PAGE = 200;
+
+/** In-memory filters over the loaded rows, in display order. */
+export const USER_FILTERS = ["joined_week", "trainers", "clients", "suspended", "admins"] as const;
+
+export type UserFilter = (typeof USER_FILTERS)[number];
+
+/** Reads `?joined=week` (the dashboard tile's link) into the initial filters. */
+export function parseUserFilters(joined: string | string[] | undefined): UserFilter[] {
+  const raw = Array.isArray(joined) ? joined[0] : joined;
+  return raw === "week" ? ["joined_week"] : [];
+}
+
 export const listUsersSchema = z.object({
   query: z.string().trim().max(100, "Keep the search under 100 characters."),
   limit: z.number().int().min(1).max(100).default(USER_PAGE_SIZE),

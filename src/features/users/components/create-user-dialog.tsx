@@ -28,11 +28,20 @@ type CreateUserResponse =
 export function CreateUserDialog({
   serviceRoleConfigured,
   roles,
+  defaultOpen = false,
 }: {
   serviceRoleConfigured: boolean;
   roles: AssignableRole[];
+  /** From `?new=user` (the command palette's "Invite user"). */
+  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen && serviceRoleConfigured);
+
+  function onOpenChange(next: boolean) {
+    setOpen(next);
+    // Drop ?new=user so a reload does not reopen the dialog.
+    if (!next && defaultOpen) window.history.replaceState(null, "", window.location.pathname);
+  }
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -80,14 +89,14 @@ export function CreateUserDialog({
         return;
       }
       showToast("success", "User created.");
-      setOpen(false);
+      onOpenChange(false);
       // A full refresh re-runs the server search so the new person appears.
       window.location.reload();
     });
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
         <Button>
           <UserPlus size={16} aria-hidden="true" />

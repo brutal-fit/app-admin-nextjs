@@ -1,6 +1,7 @@
 /*
  * HAND-WRITTEN placeholder types for the RBAC schema (backend task 05, approved 2026-10-19)
- * plus the existing tables this panel reads (trainer applications, documents, availability). Replace this whole file with
+ * plus the existing tables this panel reads (trainer applications, documents, availability,
+ * and for dashboard counts support cases and bookings). Replace this whole file with
  * the generated version once the migration is applied:
  *
  *   npx supabase gen types typescript --project-id apmoxeqbqgjmrrojwgjw --schema public > src/types/database.ts
@@ -30,6 +31,23 @@ export type ApplicationStatus =
 export type DocumentKind = "government_id" | "certificate" | "other";
 export type DocumentStatus = "uploaded" | "accepted" | "rejected";
 export type ExperienceBand = "just_starting" | "1_3" | "3_5" | "5_10" | "10_plus";
+export type SupportCaseStatus =
+  | "open"
+  | "triaged"
+  | "waiting_for_user"
+  | "investigating"
+  | "resolved"
+  | "closed"
+  | "escalated";
+export type BookingStatus =
+  | "requested"
+  | "pending_confirmation"
+  | "confirmed"
+  | "reschedule_requested"
+  | "cancelled"
+  | "completed"
+  | "no_show"
+  | "disputed";
 
 export type RoleRow = {
   id: string;
@@ -123,6 +141,40 @@ export type AvailabilityWindowRow = {
 };
 
 /**
+ * public.support_cases (20261013000500_social.sql): only the columns the dashboard counts.
+ * Rows are readable with support.read (20261019000300_rbac_round2.sql).
+ */
+export type SupportCaseRow = {
+  id: string;
+  status: SupportCaseStatus;
+  created_at: string;
+  updated_at: string;
+};
+
+/**
+ * public.bookings (20261013000400_bookings.sql): only the columns the dashboard counts. The
+ * select policy still admits any admin (private.is_admin()), not bookings.read.
+ */
+export type BookingRow = {
+  id: string;
+  status: BookingStatus;
+  start_at: string;
+  end_at: string;
+  created_at: string;
+};
+
+/** One row of admin_list_audit (20261019000300_rbac_round2.sql), needs audit.read. */
+export type AuditLogRow = {
+  id: number;
+  actor_id: string | null;
+  actor_name: string | null;
+  action: string;
+  target_id: string | null;
+  details: Json;
+  created_at: string;
+};
+
+/**
  * The jsonb `my_access()` returns. Typed for reference only: the data layer still validates
  * it with Zod, because jsonb carries no shape guarantee.
  */
@@ -204,6 +256,18 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      support_cases: {
+        Row: SupportCaseRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      bookings: {
+        Row: BookingRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: { [_ in never]: never };
     Functions: {
@@ -263,6 +327,10 @@ export type Database = {
         Args: { p_document: string; p_status: DocumentStatus; p_note?: string | null };
         Returns: undefined;
       };
+      admin_list_audit: {
+        Args: { p_limit?: number; p_offset?: number };
+        Returns: AuditLogRow[];
+      };
     };
     Enums: {
       user_role: UserRole;
@@ -272,6 +340,8 @@ export type Database = {
       document_kind: DocumentKind;
       document_status: DocumentStatus;
       experience_band: ExperienceBand;
+      support_case_status: SupportCaseStatus;
+      booking_status: BookingStatus;
     };
     CompositeTypes: { [_ in never]: never };
   };

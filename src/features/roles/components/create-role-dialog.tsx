@@ -13,10 +13,18 @@ import {
 } from "@/components/ui/dialog";
 import { RoleForm } from "@/features/roles/components/role-form";
 
-export function CreateRoleDialog() {
-  const [open, setOpen] = useState(false);
+/** `defaultOpen` comes from `?new=role` (the command palette's "New role"). */
+export function CreateRoleDialog({ defaultOpen = false }: { defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  function onOpenChange(next: boolean) {
+    setOpen(next);
+    // Drop ?new=role so a reload does not reopen the dialog.
+    if (!next && defaultOpen) window.history.replaceState(null, "", window.location.pathname);
+  }
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
         <Button>
           <Plus size={16} aria-hidden="true" />
@@ -30,7 +38,7 @@ export function CreateRoleDialog() {
             Create the role first, then choose its permissions on the role page.
           </DialogDescription>
         </DialogHeader>
-        <RoleForm mode="create" onDone={() => setOpen(false)} />
+        <RoleForm mode="create" onDone={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
   );
