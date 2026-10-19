@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+/*
+ * Brand tokens shared with the Flutter app. This file is the only place colour values are
+ * written; components use the generated utilities (bg-surface, text-text-muted, ...).
+ * The default Tailwind palette is cleared so an off-brand colour cannot slip in.
+ */
+@theme {
+  --color-*: initial;
+
+  --color-bg: #161616;
+  --color-surface: #1f1f1f;
+  --color-surface-raised: #292929;
+  --color-border: #3a3a3a;
+  --color-border-strong: #5a5a5a;
+
+  /* Accent is for primary actions and the active nav item only. */
+  --color-accent: #ff5656;
+  --color-accent-hover: #ff7070;
+  /* Dark text on the accent keeps 4.5:1; white on #ff5656 does not. */
+  --color-on-accent: #161616;
+
+  --color-text: #f5f5f5;
+  --color-text-muted: #a8a8a8;
+  --color-text-subtle: #8c8c8c;
+
+  --color-success: #5fd38d;
+  --color-warning: #f2c14e;
+  --color-danger: #ff8f8f;
+
+  --color-overlay: rgb(0 0 0 / 0.65);
+}
+
+@theme inline {
+  --font-sans: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
