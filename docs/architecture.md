@@ -48,6 +48,8 @@ function fixes the matching row in the same change.
 | `/roles/[id]` | `src/app/(admin)/roles/[id]/page.tsx` | `rbac.manage` | Details form (name, description, "Grants admin panel access"), permission grid, delete; all locked for system roles with the reason. |
 | `/users` | `src/app/(admin)/users/page.tsx` | `users.read` | Debounced search; "New user" (`users.manage`, needs the service role key). |
 | `/users/[id]` | `src/app/(admin)/users/[id]/page.tsx` | `users.read` | Roles assign/revoke and "Grant trainer app access" (`users.manage`). |
+| `/applications` | `src/app/(admin)/applications/page.tsx` | `applications.read` | Status chips (`?status=`, all = every non-draft), name, @username (needs `users.read`, else "Hidden"), city, modes, submitted, status; 200 rows max with a note. |
+| `/applications/[trainerId]` | `src/app/(admin)/applications/[trainerId]/page.tsx` | `applications.read` | Answers (profile, experience, services and expected rates, availability, documents). Documents section needs `documents.review`; decision form needs `applications.review`; each says why when missing. |
 | `POST /api/users/create` | `src/app/api/users/create/route.ts` | `users.manage` | 503 "Service role key not configured" without the key; creates a confirmed auth user, then assigns roles with the caller's session. |
 | loading state | `src/app/(admin)/loading.tsx` | - | Page-level Suspense fallback. |
 
@@ -65,11 +67,14 @@ function fixes the matching row in the same change.
 | `rbac.manage` | rbac | `/roles`, `/roles/[id]` | | create-role-dialog, role-form, permission-grid, delete-role-button |
 | `users.read` | users | `/users`, `/users/[id]` | | user-search |
 | `users.manage` | users | | `/api/users/create` | user-roles-panel, grant-trainer-access, create-user-dialog |
-| `applications.read`, `applications.review`, `documents.review`, `support.read`, `support.manage`, `bookings.read`, `reviews.moderate`, `audit.read` | their own (`documents.review` is in `applications`, as seeded) | none yet (AD-03 to AD-05) | | |
+| `applications.read` | applications | `/applications`, `/applications/[trainerId]` | | application-table, application-detail |
+| `applications.review` | applications | | | decision-form (`reviewApplicationAction`) |
+| `documents.review` | applications | | | document-list, document-verdict-dialog (`openDocumentAction`, `reviewDocumentAction`) |
+| `support.read`, `support.manage`, `bookings.read`, `reviews.moderate`, `audit.read` | their own | none yet (AD-04, AD-05) | | |
 
-## Data layer (`src/lib/db/rbac.ts`)
+## Data layer (`src/lib/db/`)
 
-The only file that spells table or function names (the hand-written types in
+`rbac.ts` and `applications.ts` are the only files that spell table, bucket or function names (the hand-written types in
 `src/types/database.ts` name them as types). Built against the task 05 contract (approved 2026-10-19),
 which is not applied yet; every call fails today with `NOT_INSTALLED`.
 
@@ -81,6 +86,17 @@ which is not applied yet; every call fails today with `NOT_INSTALLED`.
 | `listUsers`, `countUsers`, `getUser` | `admin_list_users` (count uses `p_limit => null`), `admin_get_user` |
 | `listUserRoleGrants` | `user_roles` select |
 | `assignRole`, `revokeRole`, `setPlatformRole` | `admin_assign_role`, `admin_revoke_role`, `admin_set_platform_role` |
+
+`applications.ts` (reads run through RLS: `applications.read` for applications, `documents.review` for documents and the bucket):
+
+| Wrapper | Calls |
+|---|---|
+| `listApplications`, `getApplication`, `getApplicationModes` | `trainer_applications` selects (drafts never listed) |
+| `listDocuments` | `trainer_documents` select without `storage_path` (the path never reaches the client) |
+| `listAvailability` | `availability_windows` select |
+| `createDocumentSignedUrl` | path looked up by document id, then `storage.from('trainer-documents').createSignedUrl(path, 300)` with the admin's session |
+| `reviewApplication` | `review_application(p_trainer, p_status, p_note, p_home_rate_inr, p_online_rate_inr, p_verified_checks, p_availability_tags => null)` |
+| `reviewDocument` | `review_document(p_document, p_status, p_note)` |
 
 ## Supabase and errors (`src/lib/supabase/`, `src/server/`)
 
@@ -100,6 +116,7 @@ which is not applied yet; every call fails today with `NOT_INSTALLED`.
 | auth | `src/features/auth/{actions.ts (signInAction, signOutAction), schemas.ts, components/login-form.tsx}` |
 | roles | `src/features/roles/{actions.ts, schemas.ts, components/{create-role-dialog, role-table, role-form, permission-grid, delete-role-button}.tsx}` |
 | users | `src/features/users/{actions.ts, schemas.ts, components/{user-search, user-table, user-roles-panel, grant-trainer-access, create-user-dialog}.tsx}` |
+| applications | `src/features/applications/{api.ts (loadApplicationList, loadApplicationDetail: server loaders, usernames via admin_get_user only with users.read), actions.ts (reviewApplicationAction, reviewDocumentAction, openDocumentAction), schemas.ts (filters, decisions, verified checks, labels, missingPriceMessage), format.ts (INR, bytes, times, status tones), components/{application-table, application-detail, document-list, document-verdict-dialog, decision-form}.tsx}`. Approval needs a platform price for every offered mode: checked in the form and again in the action against the modes read from the database. |
 
 ## Stores (`src/stores/`)
 
@@ -112,7 +129,7 @@ which is not applied yet; every call fails today with `NOT_INSTALLED`.
 
 | Path | Components |
 |---|---|
-| `src/components/ui/` | CLI-generated shadcn/ui, not edited by hand: `button`, `input`, `label`, `select` (Radix), `checkbox` (Radix; renders a hidden input inside a form), `badge`, `table`, `dialog` (Radix), `dropdown-menu`, `sonner` (`Toaster`, mounted in the root layout with `theme="dark"`), `skeleton`, `separator`, `card`. The one hand-written file is `empty-state` (a dashed `Card`; shadcn has none). Status badges are `variant="outline"` plus `border-success text-success`, `border-warning text-warning`, `border-destructive text-destructive` or `text-muted-foreground`. |
+| `src/components/ui/` | CLI-generated shadcn/ui, not edited by hand: `button`, `input`, `label`, `select` (Radix), `checkbox` (Radix; renders a hidden input inside a form), `badge`, `table`, `dialog` (Radix), `dropdown-menu`, `textarea`, `sonner` (`Toaster`, mounted in the root layout with `theme="dark"`), `skeleton`, `separator`, `card`. The one hand-written file is `empty-state` (a dashed `Card`; shadcn has none). Status badges are `variant="outline"` plus `border-success text-success`, `border-warning text-warning`, `border-destructive text-destructive` or `text-muted-foreground`. |
 | `src/components/icons.ts` | Named re-exports of the `react-feather` icons we place (size 16 or 18, stroke 2). Nothing outside `src/components/ui` imports `lucide-react`. |
 | `src/lib/utils.ts` | `cn` (CLI-generated; re-exports the `cn` package). Replaces the old `src/lib/utils/cn.ts`. |
 | `src/components/rbac/can.tsx` | `<Can permission fallback>` (client) |

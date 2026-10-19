@@ -6,6 +6,9 @@
 export type { Icon, IconProps } from "react-feather";
 export {
   ArrowLeft,
+  Check,
+  ExternalLink,
+  FileText,
   Grid,
   Inbox,
   LogOut,
@@ -15,4 +18,5 @@ export {
   Trash2,
   UserPlus,
   Users,
+  X,
 } from "react-feather";

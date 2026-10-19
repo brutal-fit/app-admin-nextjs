@@ -102,6 +102,13 @@ describe("navItems", () => {
   it("starts with the dashboard and lists gated top-level routes", () => {
     const items = navItems();
     expect(items[0]).toEqual({ href: "/dashboard", label: "Dashboard", permission: null });
-    expect(items.map((i) => i.href)).toEqual(["/dashboard", "/roles", "/users"]);
+    expect(items.map((i) => i.href)).toEqual(["/dashboard", "/roles", "/users", "/applications"]);
+  });
+});
+
+describe("applications routes", () => {
+  it("gates the list and detail on applications.read", () => {
+    expect(routePermission("/applications")).toEqual({ kind: "permission", key: "applications.read" });
+    expect(routePermission("/applications/abc")).toEqual({ kind: "permission", key: "applications.read" });
   });
 });

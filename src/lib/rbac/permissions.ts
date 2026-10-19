@@ -59,9 +59,9 @@ export const PERMISSIONS = [
     key: "applications.read",
     group: "applications",
     name: "View trainer applications",
-    routes: [],
+    routes: ["/applications", "/applications/[trainerId]"],
     apis: [],
-    components: [],
+    components: ["application-table", "application-detail"],
   },
   {
     key: "applications.review",
@@ -69,7 +69,7 @@ export const PERMISSIONS = [
     name: "Approve or reject applications and set prices",
     routes: [],
     apis: [],
-    components: [],
+    components: ["decision-form"],
   },
   {
     key: "documents.review",
@@ -77,7 +77,7 @@ export const PERMISSIONS = [
     name: "Review documents",
     routes: [],
     apis: [],
-    components: [],
+    components: ["document-list", "document-verdict-dialog"],
   },
   {
     key: "support.read",
@@ -138,6 +138,7 @@ const NAV_LABELS: Readonly<Record<string, string>> = {
   "/dashboard": "Dashboard",
   "/roles": "Roles",
   "/users": "Users",
+  "/applications": "Applications",
 };
 
 export type RouteRule = { kind: "open" } | { kind: "permission"; key: PermissionKey };

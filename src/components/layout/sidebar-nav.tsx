@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Grid, Shield, Users, type Icon } from "@/components/icons";
+import { FileText, Grid, Shield, Users, type Icon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 export type SidebarNavItem = { href: string; label: string };
@@ -12,6 +12,7 @@ const NAV_ICONS: Record<string, Icon> = {
   "/dashboard": Grid,
   "/roles": Shield,
   "/users": Users,
+  "/applications": FileText,
 };
 
 export function SidebarNav({

@@ -1,6 +1,6 @@
 /*
- * HAND-WRITTEN placeholder types for the RBAC schema (backend task 05, approved 2026-10-19,
- * not applied yet) plus the existing columns this panel reads. Replace this whole file with
+ * HAND-WRITTEN placeholder types for the RBAC schema (backend task 05, approved 2026-10-19)
+ * plus the existing tables this panel reads (trainer applications, documents, availability). Replace this whole file with
  * the generated version once the migration is applied:
  *
  *   npx supabase gen types typescript --project-id apmoxeqbqgjmrrojwgjw --schema public > src/types/database.ts
@@ -18,6 +18,18 @@ export type Json =
 
 export type UserRole = "client" | "trainer";
 export type AccountStatus = "active" | "suspended";
+export type SessionMode = "home" | "online";
+export type ApplicationStatus =
+  | "draft"
+  | "submitted"
+  | "under_review"
+  | "needs_information"
+  | "approved"
+  | "rejected"
+  | "suspended";
+export type DocumentKind = "government_id" | "certificate" | "other";
+export type DocumentStatus = "uploaded" | "accepted" | "rejected";
+export type ExperienceBand = "just_starting" | "1_3" | "3_5" | "5_10" | "10_plus";
 
 export type RoleRow = {
   id: string;
@@ -59,6 +71,55 @@ export type AdminUserRow = {
   account_status: AccountStatus;
   roles: string[];
   created_at: string;
+  /** Returned by admin_list_users and admin_get_user; optional so older fixtures still fit. */
+  username?: string | null;
+};
+
+/** public.trainer_applications (20261013000300_trainers.sql, city from 20261014000100). */
+export type TrainerApplicationRow = {
+  trainer_id: string;
+  status: ApplicationStatus;
+  full_name: string;
+  phone: string;
+  summary: string;
+  area: string;
+  city: string;
+  travel_radius_km: number | null;
+  languages: string[];
+  modes: SessionMode[];
+  specialties: string[];
+  experience: ExperienceBand | null;
+  qualifications: string;
+  session_notes: string;
+  expected_home_rate_inr: number | null;
+  expected_online_rate_inr: number | null;
+  accuracy_confirmed: boolean;
+  reviewer_note: string | null;
+  submitted_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** public.trainer_documents; files live in the private `trainer-documents` bucket. */
+export type TrainerDocumentRow = {
+  id: string;
+  trainer_id: string;
+  kind: DocumentKind;
+  storage_path: string;
+  file_name: string;
+  size_bytes: number;
+  status: DocumentStatus;
+  note: string | null;
+  created_at: string;
+};
+
+/** public.availability_windows; weekday is ISO (1 Monday .. 7 Sunday), minutes from midnight. */
+export type AvailabilityWindowRow = {
+  id: string;
+  trainer_id: string;
+  weekday: number;
+  start_minute: number;
+  end_minute: number;
 };
 
 /**
@@ -125,6 +186,24 @@ export type Database = {
           },
         ];
       };
+      trainer_applications: {
+        Row: TrainerApplicationRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      trainer_documents: {
+        Row: TrainerDocumentRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      availability_windows: {
+        Row: AvailabilityWindowRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: { [_ in never]: never };
     Functions: {
@@ -168,10 +247,31 @@ export type Database = {
         Args: { p_user_id: string };
         Returns: AdminUserRow[];
       };
+      review_application: {
+        Args: {
+          p_trainer: string;
+          p_status: ApplicationStatus;
+          p_note?: string | null;
+          p_home_rate_inr?: number | null;
+          p_online_rate_inr?: number | null;
+          p_verified_checks?: string[] | null;
+          p_availability_tags?: string[] | null;
+        };
+        Returns: undefined;
+      };
+      review_document: {
+        Args: { p_document: string; p_status: DocumentStatus; p_note?: string | null };
+        Returns: undefined;
+      };
     };
     Enums: {
       user_role: UserRole;
       account_status: AccountStatus;
+      session_mode: SessionMode;
+      application_status: ApplicationStatus;
+      document_kind: DocumentKind;
+      document_status: DocumentStatus;
+      experience_band: ExperienceBand;
     };
     CompositeTypes: { [_ in never]: never };
   };
