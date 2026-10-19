@@ -2,6 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { PERMISSION_GROUPS, permissionsInGroup, type PermissionKey } from "@/lib/rbac/permissions";
 import { setRolePermissionsAction } from "@/features/roles/actions";
 import { showToast } from "@/stores/toast-store";
@@ -52,36 +55,48 @@ export function PermissionGrid({
     <div className="flex flex-col gap-6">
       <div className="grid gap-4 lg:grid-cols-2">
         {PERMISSION_GROUPS.map((group) => (
-          <fieldset
+          // role="group" with the title as its name does what a fieldset and legend did.
+          <Card
             key={group.key}
-            className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4"
+            role="group"
+            aria-labelledby={`permission-group-${group.key}`}
+            className="gap-4 py-4"
           >
-            <legend className="px-1 text-sm font-semibold">{group.name}</legend>
-            {permissionsInGroup(group.key).map((permission) => (
-              <label key={permission.key} className="flex items-start gap-3 text-sm">
-                <input
-                  type="checkbox"
-                  className="mt-0.5 size-4 accent-accent focus-visible:outline-2 focus-visible:outline-accent"
-                  checked={selected.has(permission.key)}
-                  disabled={locked}
-                  onChange={(event) => toggle(permission.key, event.target.checked)}
-                />
-                <span className="flex flex-col">
-                  <span className="text-text">{permission.name}</span>
-                  <code className="text-xs text-text-subtle">{permission.key}</code>
-                </span>
-              </label>
-            ))}
-          </fieldset>
+            <CardHeader className="px-4">
+              <CardTitle id={`permission-group-${group.key}`} className="text-sm">
+                {group.name}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3 px-4">
+              {permissionsInGroup(group.key).map((permission) => {
+                const id = `permission-${permission.key}`;
+                return (
+                  <div key={permission.key} className="flex items-start gap-3">
+                    <Checkbox
+                      id={id}
+                      className="mt-0.5"
+                      checked={selected.has(permission.key)}
+                      disabled={locked}
+                      onCheckedChange={(checked) => toggle(permission.key, checked === true)}
+                    />
+                    <Label htmlFor={id} className="flex flex-col items-start gap-1 font-normal">
+                      <span>{permission.name}</span>
+                      <code className="text-xs text-muted-foreground">{permission.key}</code>
+                    </Label>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
         ))}
       </div>
       <div className="flex flex-wrap items-center justify-end gap-3">
         {disabledReason ? (
-          <p className="text-sm text-text-muted">{disabledReason}</p>
+          <p className="text-sm text-muted-foreground">{disabledReason}</p>
         ) : dirty ? (
-          <p className="text-sm text-text-muted">Unsaved changes.</p>
+          <p className="text-sm text-muted-foreground">Unsaved changes.</p>
         ) : null}
-        <Button variant="primary" onClick={save} disabled={locked || !dirty}>
+        <Button onClick={save} disabled={locked || !dirty}>
           {pending ? "Saving..." : "Save permissions"}
         </Button>
       </div>

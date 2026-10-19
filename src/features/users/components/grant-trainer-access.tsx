@@ -18,7 +18,7 @@ export function GrantTrainerAccess({
 
   if (platformRole !== null) {
     return (
-      <p className="text-sm text-text-muted">
+      <p className="text-sm text-muted-foreground">
         This person already has the {platformRole} role in the app. The platform role can only be
         set once, while it is empty.
       </p>
@@ -28,7 +28,7 @@ export function GrantTrainerAccess({
   return (
     <div className="flex flex-col items-start gap-2">
       <Button
-        variant="secondary"
+        variant="outline"
         disabled={pending}
         onClick={() =>
           startTransition(async () => {
@@ -43,7 +43,7 @@ export function GrantTrainerAccess({
       >
         {pending ? "Granting..." : "Grant trainer app access"}
       </Button>
-      <p className="text-sm text-text-muted">
+      <p className="text-sm text-muted-foreground">
         They will still need to apply and be approved in the app.
       </p>
     </div>

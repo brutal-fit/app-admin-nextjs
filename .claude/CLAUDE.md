@@ -28,8 +28,12 @@ trainers sign in to the Flutter app. One person can be both.
 
 Next.js (App Router, `src/` directory, Turbopack), TypeScript strict, React, Tailwind CSS v4,
 Zustand for client state, `@supabase/supabase-js` + `@supabase/ssr` for auth and data, Zod for
-every input that crosses a boundary. No UI kit; components are hand-written under
-`src/components/ui`. Adding a dependency is a decision proposed to the owner first.
+every input that crosses a boundary. UI components come from shadcn/ui (owner, 2026-10-19),
+generated into `src/components/ui` with the CLI and themed through the brand tokens in
+`globals.css`; hand-written components only where shadcn has none. Icons we place come from `react-feather`
+(owner, 2026-10-19), imported through `src/components/icons.ts`; shadcn's generated files keep
+their `lucide-react` icons. Adding any other
+dependency is a decision proposed to the owner first.
 
 ## Toolchain
 

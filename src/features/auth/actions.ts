@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { getMyAccess } from "@/lib/db/rbac";
+import { hasPanelAccess } from "@/lib/rbac/can";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { AppError, NO_ADMIN_ROLE_MESSAGE, errorPayload } from "@/lib/supabase/errors";
 import { signInSchema } from "@/features/auth/schemas";
@@ -11,7 +12,8 @@ export type SignInState = ActionResult | null;
 
 /**
  * Signs in with email and password, then asks the server what this account may do. Accounts
- * without an admin role (clients, trainers) are signed straight back out.
+ * the server reports without admin access (clients, trainers), or whose admin roles grant no
+ * permission, are signed straight back out.
  */
 export async function signInAction(_previous: SignInState, formData: FormData): Promise<SignInState> {
   const parsed = signInSchema.safeParse({
@@ -28,14 +30,14 @@ export async function signInAction(_previous: SignInState, formData: FormData): 
     const { error } = await supabase.auth.signInWithPassword(parsed.data);
     if (error) return { ok: false, error: errorPayload(error) };
 
-    let permissions: string[];
+    let allowed: boolean;
     try {
-      permissions = (await getMyAccess(supabase)).permissions;
+      allowed = hasPanelAccess(await getMyAccess(supabase));
     } catch (accessError) {
       await supabase.auth.signOut();
       return { ok: false, error: errorPayload(accessError) };
     }
-    if (permissions.length === 0) {
+    if (!allowed) {
       await supabase.auth.signOut();
       return { ok: false, error: new AppError("BRPRM", NO_ADMIN_ROLE_MESSAGE).toPayload() };
     }

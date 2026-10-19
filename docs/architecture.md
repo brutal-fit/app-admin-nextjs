@@ -17,6 +17,8 @@ function fixes the matching row in the same change.
 | Supabase | `@supabase/supabase-js` 2.118, `@supabase/ssr` 0.12 |
 | State, validation | Zustand 5, Zod 4 |
 | Tests | Vitest 5 + jsdom + Testing Library, `vitest.config.mts`, `passWithNoTests` until AD-06 |
+| UI primitives | shadcn/ui CLI 4.22 (`components.json`: style `new-york`, Radix base, base colour neutral, CSS variables, `rsc`); `radix-ui`, `class-variance-authority`, `cn` (shadcn's class merger, replaces clsx + tailwind-merge), `tw-animate-css`, `sonner`, `next-themes` (pulled in by the generated `sonner`, no provider mounted), `lucide-react` (generated files only) |
+| Icons | `react-feather` 2.0, imported only through `src/components/icons.ts` |
 | Dev server | `npm run dev` on port 3100 |
 
 ## Request flow
@@ -39,11 +41,11 @@ function fixes the matching row in the same change.
 | Route | File | Gate | Notes |
 |---|---|---|---|
 | `/` | `src/app/page.tsx` | none | Redirects to `/dashboard` or `/login` from the session. |
-| `/login` | `src/app/(auth)/login/page.tsx` | public | Email + password; `?reason=no-access` shows "This account has no admin role." |
+| `/login` | `src/app/(auth)/login/page.tsx` | public | Email + password; sign-in is refused (signed out, "This account has no admin role.") unless `hasPanelAccess`; `?reason=no-access` shows the same message. |
 | `/dashboard` | `src/app/(admin)/dashboard/page.tsx` | open (any admin) | Counts: users (`users.read`), roles. Failures show the mapped error. |
 | `/forbidden` | `src/app/(admin)/forbidden/page.tsx` | open (any admin) | Target of every failed route check. |
-| `/roles` | `src/app/(admin)/roles/page.tsx` | `rbac.manage` | Table and "New role" dialog. |
-| `/roles/[id]` | `src/app/(admin)/roles/[id]/page.tsx` | `rbac.manage` | Details form, permission grid, delete; all locked for system roles with the reason. |
+| `/roles` | `src/app/(admin)/roles/page.tsx` | `rbac.manage` | Table (Type badge, "Admin" panel-access badge for `is_admin`) and "New role" dialog. |
+| `/roles/[id]` | `src/app/(admin)/roles/[id]/page.tsx` | `rbac.manage` | Details form (name, description, "Grants admin panel access"), permission grid, delete; all locked for system roles with the reason. |
 | `/users` | `src/app/(admin)/users/page.tsx` | `users.read` | Debounced search; "New user" (`users.manage`, needs the service role key). |
 | `/users/[id]` | `src/app/(admin)/users/[id]/page.tsx` | `users.read` | Roles assign/revoke and "Grant trainer app access" (`users.manage`). |
 | `POST /api/users/create` | `src/app/api/users/create/route.ts` | `users.manage` | 503 "Service role key not configured" without the key; creates a confirmed auth user, then assigns roles with the caller's session. |
@@ -54,8 +56,8 @@ function fixes the matching row in the same change.
 | File | Exports |
 |---|---|
 | `permissions.ts` | `PERMISSION_GROUPS`, `PERMISSIONS` (`{ key, group, name, routes, apis, components }`), `PermissionKey`, `isPermissionKey`, `OPEN_ADMIN_ROUTES`, `routePermission(pathname)` (`{kind:'open'}`, `{kind:'permission', key}` or `null` for unknown paths, treated as forbidden), `apiPermission`, `navItems`, `permissionsInGroup`. The only list of permission keys in `src/`. |
-| `can.ts` | `can(permissions, key)` |
-| `session.ts` | `getSessionAccess()` (React `cache`, once per request): `anonymous`, `no-access`, `error` or `ok` with `SessionAccess` from `my_access()`. |
+| `can.ts` | `can(permissions, key)`; `hasPanelAccess(access)`: `admin_access` true and at least one permission (the fallback). Used by sign-in and `getSessionAccess`. |
+| `session.ts` | `getSessionAccess()` (React `cache`, once per request): `anonymous`, `no-access` (fails `hasPanelAccess`), `error` or `ok` with `SessionAccess` from `my_access()` (`adminAccess`, `roles[{id, key, name, isAdmin}]`, `permissions`). |
 | `require-permission.ts` | `ForbiddenError`, `requirePermission(key)` (throws; actions and route handlers), `requireRoutePermission(pattern)` (redirects; pages). |
 
 | Key | Group | Routes | APIs | Components |
@@ -68,14 +70,14 @@ function fixes the matching row in the same change.
 ## Data layer (`src/lib/db/rbac.ts`)
 
 The only file that spells table or function names (the hand-written types in
-`src/types/database.ts` name them as types). Built against the proposed task 05 schema,
+`src/types/database.ts` name them as types). Built against the task 05 contract (approved 2026-10-19),
 which is not applied yet; every call fails today with `NOT_INSTALLED`.
 
 | Wrapper | Calls |
 |---|---|
-| `getMyAccess` | `rpc('my_access')`, validated with Zod |
+| `getMyAccess` | `rpc('my_access')`, validated with Zod; a missing `admin_access` or `roles[].is_admin` reads as false |
 | `listRoles`, `countRoles`, `getRole` | `roles`, `role_permissions` selects |
-| `createRole`, `updateRole`, `deleteRole`, `setRolePermissions` | `admin_create_role`, `admin_update_role`, `admin_delete_role`, `admin_set_role_permissions` |
+| `createRole`, `updateRole`, `deleteRole`, `setRolePermissions` | `admin_create_role(p_key, p_name, p_description, p_is_admin)`, `admin_update_role(p_id, p_name, p_description, p_is_admin)`, `admin_delete_role`, `admin_set_role_permissions` |
 | `listUsers`, `countUsers`, `getUser` | `admin_list_users` (count uses `p_limit => null`), `admin_get_user` |
 | `listUserRoleGrants` | `user_roles` select |
 | `assignRole`, `revokeRole`, `setPlatformRole` | `admin_assign_role`, `admin_revoke_role`, `admin_set_platform_role` |
@@ -96,7 +98,7 @@ which is not applied yet; every call fails today with `NOT_INSTALLED`.
 | Feature | Files |
 |---|---|
 | auth | `src/features/auth/{actions.ts (signInAction, signOutAction), schemas.ts, components/login-form.tsx}` |
-| roles | `src/features/roles/{actions.ts, schemas.ts, components/{create-role-dialog, role-form, permission-grid, delete-role-button}.tsx}` |
+| roles | `src/features/roles/{actions.ts, schemas.ts, components/{create-role-dialog, role-table, role-form, permission-grid, delete-role-button}.tsx}` |
 | users | `src/features/users/{actions.ts, schemas.ts, components/{user-search, user-table, user-roles-panel, grant-trainer-access, create-user-dialog}.tsx}` |
 
 ## Stores (`src/stores/`)
@@ -104,23 +106,30 @@ which is not applied yet; every call fails today with `NOT_INSTALLED`.
 | Store | Holds |
 |---|---|
 | `session-store.ts` + `session-store-provider.tsx` | `access`, `setAccess`, `clear`. One store per request tree via context (a module singleton would share one admin's access across server renders). Read with `useSessionStore`. |
-| `toast-store.ts` | Toast queue (`showToast`); client-only UI state. |
+| `toast-store.ts` | Not a store any more: `showToast(tone, message)` is a thin wrapper over sonner's `toast`, kept so features never import sonner directly. |
 
 ## Shared components
 
 | Path | Components |
 |---|---|
-| `src/components/ui/` | `button`, `input`, `select`, `badge`, `table`, `dialog` (native `<dialog>`), `empty-state`, `toast` (`Toaster`, mounted in the root layout) |
+| `src/components/ui/` | CLI-generated shadcn/ui, not edited by hand: `button`, `input`, `label`, `select` (Radix), `checkbox` (Radix; renders a hidden input inside a form), `badge`, `table`, `dialog` (Radix), `dropdown-menu`, `sonner` (`Toaster`, mounted in the root layout with `theme="dark"`), `skeleton`, `separator`, `card`. The one hand-written file is `empty-state` (a dashed `Card`; shadcn has none). Status badges are `variant="outline"` plus `border-success text-success`, `border-warning text-warning`, `border-destructive text-destructive` or `text-muted-foreground`. |
+| `src/components/icons.ts` | Named re-exports of the `react-feather` icons we place (size 16 or 18, stroke 2). Nothing outside `src/components/ui` imports `lucide-react`. |
+| `src/lib/utils.ts` | `cn` (CLI-generated; re-exports the `cn` package). Replaces the old `src/lib/utils/cn.ts`. |
 | `src/components/rbac/can.tsx` | `<Can permission fallback>` (client) |
 | `src/components/layout/` | `admin-shell` (server), `sidebar-nav`, `sign-out-button` |
 
 ## Theme
 
-Tokens in `src/app/globals.css` (`@theme`, default palette cleared): `bg #161616`, `surface`,
-`surface-raised`, `border`, `border-strong`, `accent #FF5656` (primary actions and the active
-nav item only), `accent-hover`, `on-accent` (dark text, 4.5:1 on the accent), `text`,
-`text-muted`, `text-subtle`, `success`, `warning`, `danger`, `overlay`. Montserrat through
-`next/font/google` as `--font-sans`.
+`src/app/globals.css` defines the shadcn variables once, in `:root`, with the brand values; dark
+is the only theme (`<html class="dark">` turns on the generated components' `dark:` variants;
+there is no light set and no `.dark` block). `background #161616`, `foreground`, `card`
+(surface), `popover` (raised surface), `primary #FF5656` with `primary-foreground #161616`
+(4.5:1; primary actions and the active nav item only), `secondary`, `muted`, `accent` (in
+shadcn this is the neutral hover surface, not the brand accent), `muted-foreground`,
+`destructive`, `border`, `input` (stronger border), `ring #FF5656`, plus `success` and
+`warning`; `--radius 0.5rem`. `@theme inline` maps them to utilities; the default Tailwind
+palette is cleared except `white` and `black`, which the generated overlay and destructive
+styles use. Montserrat through `next/font/google` as `--font-sans`.
 
 ## Environment
 

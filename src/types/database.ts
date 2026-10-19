@@ -1,6 +1,6 @@
 /*
- * HAND-WRITTEN placeholder types for the proposed RBAC schema (backend task 05, pending the
- * owner's approval) plus the existing columns this panel reads. Replace this whole file with
+ * HAND-WRITTEN placeholder types for the RBAC schema (backend task 05, approved 2026-10-19,
+ * not applied yet) plus the existing columns this panel reads. Replace this whole file with
  * the generated version once the migration is applied:
  *
  *   npx supabase gen types typescript --project-id apmoxeqbqgjmrrojwgjw --schema public > src/types/database.ts
@@ -24,6 +24,8 @@ export type RoleRow = {
   key: string;
   name: string;
   description: string;
+  /** Holding a role with this flag admits the user to the admin panel. */
+  is_admin: boolean;
   is_system: boolean;
   created_at: string;
   updated_at: string;
@@ -57,6 +59,20 @@ export type AdminUserRow = {
   account_status: AccountStatus;
   roles: string[];
   created_at: string;
+};
+
+/**
+ * The jsonb `my_access()` returns. Typed for reference only: the data layer still validates
+ * it with Zod, because jsonb carries no shape guarantee.
+ */
+export type MyAccessJson = {
+  user_id: string;
+  full_name: string | null;
+  platform_role: UserRole | null;
+  account_status: AccountStatus;
+  admin_access: boolean;
+  roles: { id: string; key: string; name: string; is_admin: boolean }[];
+  permissions: string[];
 };
 
 export type Database = {
@@ -114,14 +130,14 @@ export type Database = {
     Functions: {
       my_access: {
         Args: Record<string, never>;
-        Returns: Json;
+        Returns: MyAccessJson;
       };
       admin_create_role: {
-        Args: { p_key: string; p_name: string; p_description: string };
+        Args: { p_key: string; p_name: string; p_description?: string; p_is_admin?: boolean };
         Returns: RoleRow;
       };
       admin_update_role: {
-        Args: { p_id: string; p_name: string; p_description: string };
+        Args: { p_id: string; p_name: string; p_description: string; p_is_admin: boolean };
         Returns: RoleRow;
       };
       admin_delete_role: {

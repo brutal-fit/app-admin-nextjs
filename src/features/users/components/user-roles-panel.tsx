@@ -1,10 +1,18 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Shield } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Select } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { assignRoleAction, revokeRoleAction } from "@/features/users/actions";
 import { showToast } from "@/stores/toast-store";
 
@@ -34,6 +42,7 @@ export function UserRolesPanel({
   const options = available
     .filter((role) => !assignedIds.has(role.id))
     .map((role) => ({ value: role.id, label: `${role.name} (${role.key})` }));
+  const noOptions = options.length === 0;
 
   function run(action: () => Promise<{ ok: boolean; error?: { message: string } }>, done: string) {
     startTransition(async () => {
@@ -51,25 +60,33 @@ export function UserRolesPanel({
     <div className="flex flex-col gap-4">
       {assigned.length === 0 ? (
         <EmptyState
+          icon={Shield}
           title="No admin roles"
           description="Without a role this person cannot sign in to the admin panel."
         />
       ) : (
-        <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
+        <ul className="flex flex-col divide-y rounded-lg border bg-card">
           {assigned.map((role) => (
-            <li key={role.roleId} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-              <div className="flex flex-col">
+            <li
+              key={role.roleId}
+              className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+            >
+              <div className="flex flex-col gap-1">
                 <span className="flex items-center gap-2 text-sm font-medium">
                   {role.name}
-                  {role.isSystem ? <Badge tone="warning">System</Badge> : null}
+                  {role.isSystem ? (
+                    <Badge variant="outline" className="border-warning text-warning">
+                      System
+                    </Badge>
+                  ) : null}
                 </span>
-                <span className="text-xs text-text-muted">
+                <span className="text-xs text-muted-foreground">
                   Granted {new Date(role.grantedAt).toLocaleDateString("en-IN")}
                 </span>
               </div>
               <Button
                 size="sm"
-                variant="danger"
+                variant="destructive"
                 disabled={pending}
                 onClick={() =>
                   run(
@@ -85,19 +102,23 @@ export function UserRolesPanel({
         </ul>
       )}
       <div className="flex flex-wrap items-end gap-3">
-        <div className="min-w-64">
-          <Select
-            id="assign-role"
-            label="Assign a role"
-            placeholder={options.length === 0 ? "Every role is assigned" : "Choose a role"}
-            options={options}
-            value={roleId}
-            disabled={pending || options.length === 0}
-            onChange={(event) => setRoleId(event.target.value)}
-          />
+        <div className="flex min-w-64 flex-col gap-2">
+          <Label htmlFor="assign-role">Assign a role</Label>
+          {/* An empty value shows the placeholder, which is how the choice resets after a save. */}
+          <Select value={roleId} onValueChange={setRoleId} disabled={pending || noOptions}>
+            <SelectTrigger id="assign-role" className="w-full">
+              <SelectValue placeholder={noOptions ? "Every role is assigned" : "Choose a role"} />
+            </SelectTrigger>
+            <SelectContent>
+              {options.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <Button
-          variant="primary"
           disabled={pending || !roleId}
           onClick={() => run(() => assignRoleAction({ userId, roleId }), "Role assigned.")}
         >

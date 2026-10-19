@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { getMyAccess } from "@/lib/db/rbac";
+import { hasPanelAccess } from "@/lib/rbac/can";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { toAppError, type AppErrorPayload } from "@/lib/supabase/errors";
 import type { SessionAccess } from "@/types/access";
@@ -20,7 +21,7 @@ export const getSessionAccess = cache(async (): Promise<SessionAccessResult> => 
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) return { status: "anonymous" };
     const access = await getMyAccess(supabase);
-    if (access.permissions.length === 0) return { status: "no-access" };
+    if (!hasPanelAccess(access)) return { status: "no-access" };
     return { status: "ok", access };
   } catch (error) {
     return { status: "error", error: toAppError(error).toPayload() };

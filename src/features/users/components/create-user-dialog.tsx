@@ -1,9 +1,20 @@
 "use client";
 
 import { useState, useTransition, type FormEvent } from "react";
+import { UserPlus } from "@/components/icons";
 import { Button } from "@/components/ui/button";
-import { Dialog } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { createUserSchema } from "@/features/users/schemas";
 import type { AssignableRole } from "@/features/users/components/user-roles-panel";
 import { SERVICE_ROLE_MISSING_MESSAGE } from "@/lib/supabase/errors";
@@ -28,10 +39,11 @@ export function CreateUserDialog({
   if (!serviceRoleConfigured) {
     return (
       <div className="flex flex-col items-end gap-1">
-        <Button variant="primary" disabled>
+        <Button disabled>
+          <UserPlus size={16} aria-hidden="true" />
           New user
         </Button>
-        <p className="text-xs text-text-muted">{SERVICE_ROLE_MISSING_MESSAGE}</p>
+        <p className="text-xs text-muted-foreground">{SERVICE_ROLE_MISSING_MESSAGE}</p>
       </div>
     );
   }
@@ -75,68 +87,82 @@ export function CreateUserDialog({
   }
 
   return (
-    <>
-      <Button variant="primary" onClick={() => setOpen(true)}>
-        New user
-      </Button>
-      <Dialog
-        open={open}
-        onClose={() => setOpen(false)}
-        title="New user"
-        description="Creates a confirmed account with this password. Share it privately."
-      >
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button>
+          <UserPlus size={16} aria-hidden="true" />
+          New user
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>New user</DialogTitle>
+          <DialogDescription>
+            Creates a confirmed account with this password. Share it privately.
+          </DialogDescription>
+        </DialogHeader>
         <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
-          <Input id="new-user-name" name="fullName" label="Full name" required disabled={pending} />
-          <Input
-            id="new-user-email"
-            name="email"
-            type="email"
-            label="Email"
-            autoComplete="off"
-            required
-            disabled={pending}
-          />
-          <Input
-            id="new-user-password"
-            name="password"
-            type="password"
-            label="Temporary password"
-            hint="At least 8 characters."
-            autoComplete="new-password"
-            required
-            disabled={pending}
-          />
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="new-user-name">Full name</Label>
+            <Input id="new-user-name" name="fullName" required disabled={pending} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="new-user-email">Email</Label>
+            <Input
+              id="new-user-email"
+              name="email"
+              type="email"
+              autoComplete="off"
+              required
+              disabled={pending}
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="new-user-password">Temporary password</Label>
+            <Input
+              id="new-user-password"
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              required
+              disabled={pending}
+              aria-describedby="new-user-password-hint"
+            />
+            <p id="new-user-password-hint" className="text-xs text-muted-foreground">
+              At least 8 characters.
+            </p>
+          </div>
           <fieldset className="flex flex-col gap-2">
-            <legend className="text-sm font-medium">Admin roles</legend>
+            <legend className="mb-2 text-sm font-medium">Admin roles</legend>
             {roles.length === 0 ? (
-              <p className="text-sm text-text-muted">No roles exist yet.</p>
+              <p className="text-sm text-muted-foreground">No roles exist yet.</p>
             ) : (
-              roles.map((role) => (
-                <label key={role.id} className="flex items-center gap-3 text-sm">
-                  <input
-                    type="checkbox"
-                    name="roleIds"
-                    value={role.id}
-                    disabled={pending}
-                    className="size-4 accent-accent focus-visible:outline-2 focus-visible:outline-accent"
-                  />
-                  {role.name}
-                </label>
-              ))
+              roles.map((role) => {
+                const id = `new-user-role-${role.id}`;
+                return (
+                  <div key={role.id} className="flex items-center gap-3">
+                    {/* Inside a form the checkbox renders a hidden input, so getAll sees it. */}
+                    <Checkbox id={id} name="roleIds" value={role.id} disabled={pending} />
+                    <Label htmlFor={id} className="font-normal">
+                      {role.name}
+                    </Label>
+                  </div>
+                );
+              })
             )}
           </fieldset>
           {error ? (
-            <p role="alert" className="text-sm text-danger">
+            <p role="alert" className="text-sm text-destructive">
               {error}
             </p>
           ) : null}
-          <div className="flex justify-end">
-            <Button type="submit" variant="primary" disabled={pending}>
+          <DialogFooter>
+            <Button type="submit" disabled={pending}>
               {pending ? "Creating..." : "Create user"}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
-      </Dialog>
-    </>
+      </DialogContent>
+    </Dialog>
   );
 }

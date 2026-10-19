@@ -25,7 +25,7 @@ export default async function UsersPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold">Users</h1>
-          <p className="text-sm text-text-muted">
+          <p className="text-sm text-muted-foreground">
             Everyone with an account: clients, trainers and admins.
           </p>
         </div>
@@ -36,7 +36,7 @@ export default async function UsersPage() {
       {users.status === "fulfilled" ? (
         <UserSearch initialUsers={users.value} />
       ) : (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-sm text-destructive">
           {toAppError(users.reason).message}
         </p>
       )}

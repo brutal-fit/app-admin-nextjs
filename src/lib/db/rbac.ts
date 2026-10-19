@@ -1,6 +1,6 @@
 /*
  * The RBAC data layer. This is the only file in src/ that spells table or function names, so
- * a change to the schema after the owner approves task 05 touches this folder only. Every
+ * a change to the task 05 schema touches this folder only. Every
  * wrapper throws AppError (via toAppError) on failure.
  */
 import { z } from "zod";
@@ -38,7 +38,19 @@ const myAccessSchema = z.object({
   full_name: z.string().nullable().optional(),
   platform_role: z.enum(["client", "trainer"]).nullable().optional(),
   account_status: z.enum(["active", "suspended"]),
-  roles: z.array(z.object({ key: z.string(), name: z.string() })).nullable().optional(),
+  // Missing means no admin access: the panel never admits on an absent flag.
+  admin_access: z.boolean().nullable().optional(),
+  roles: z
+    .array(
+      z.object({
+        id: z.string(),
+        key: z.string(),
+        name: z.string(),
+        is_admin: z.boolean().nullable().optional(),
+      }),
+    )
+    .nullable()
+    .optional(),
   permissions: z.array(z.string()).nullable().optional(),
 });
 
@@ -53,7 +65,13 @@ export async function getMyAccess(client: AppSupabaseClient): Promise<SessionAcc
     fullName: access.full_name ?? "",
     platformRole: access.platform_role ?? null,
     accountStatus: access.account_status,
-    roles: access.roles ?? [],
+    adminAccess: access.admin_access ?? false,
+    roles: (access.roles ?? []).map((role) => ({
+      id: role.id,
+      key: role.key,
+      name: role.name,
+      isAdmin: role.is_admin ?? false,
+    })),
     permissions: access.permissions ?? [],
   };
 }
@@ -91,12 +109,13 @@ export async function getRole(client: AppSupabaseClient, id: string): Promise<Ro
 
 export async function createRole(
   client: AppSupabaseClient,
-  input: { key: string; name: string; description: string },
+  input: { key: string; name: string; description: string; isAdmin: boolean },
 ): Promise<RoleRow> {
   const { data, error } = await client.rpc(RPC.createRole, {
     p_key: input.key,
     p_name: input.name,
     p_description: input.description,
+    p_is_admin: input.isAdmin,
   });
   if (error) throw toAppError(error);
   return data;
@@ -104,12 +123,13 @@ export async function createRole(
 
 export async function updateRole(
   client: AppSupabaseClient,
-  input: { id: string; name: string; description: string },
+  input: { id: string; name: string; description: string; isAdmin: boolean },
 ): Promise<RoleRow> {
   const { data, error } = await client.rpc(RPC.updateRole, {
     p_id: input.id,
     p_name: input.name,
     p_description: input.description,
+    p_is_admin: input.isAdmin,
   });
   if (error) throw toAppError(error);
   return data;

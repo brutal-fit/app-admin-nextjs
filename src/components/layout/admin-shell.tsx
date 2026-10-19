@@ -23,10 +23,10 @@ export async function AdminShell({ children }: { children: ReactNode }) {
     return (
       <main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center gap-4 px-4">
         <h1 className="text-xl font-semibold">The admin panel cannot load</h1>
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-sm text-destructive">
           {session.error.message}
         </p>
-        <Link href="/login" className="text-sm text-text underline underline-offset-4">
+        <Link href="/login" className="text-sm text-foreground underline underline-offset-4">
           Back to sign in
         </Link>
       </main>
@@ -49,12 +49,12 @@ export async function AdminShell({ children }: { children: ReactNode }) {
   return (
     <SessionStoreProvider access={access}>
       <div className="flex min-h-dvh">
-        <aside className="hidden w-60 shrink-0 flex-col gap-8 border-r border-border bg-surface p-4 md:flex">
+        <aside className="hidden w-60 shrink-0 flex-col gap-8 border-r border-border bg-card p-4 md:flex">
           <Link
             href="/dashboard"
-            className="px-3 text-lg font-extrabold tracking-widest focus-visible:outline-2 focus-visible:outline-accent"
+            className="px-3 text-lg font-extrabold tracking-widest focus-visible:outline-2 focus-visible:outline-ring"
           >
-            BRUTAL <span className="font-medium text-text-muted">admin</span>
+            BRUTAL <span className="font-medium text-muted-foreground">admin</span>
           </Link>
           <SidebarNav items={items} />
         </aside>
@@ -66,7 +66,7 @@ export async function AdminShell({ children }: { children: ReactNode }) {
             <div className="ml-auto flex items-center gap-4">
               <div className="text-right">
                 <p className="text-sm font-semibold">{access.fullName || "Admin"}</p>
-                <p className="text-xs text-text-muted">
+                <p className="text-xs text-muted-foreground">
                   {access.roles.map((role) => role.name).join(", ")}
                 </p>
               </div>

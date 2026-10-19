@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowLeft } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 import { DeleteRoleButton } from "@/features/roles/components/delete-role-button";
 import { PermissionGrid } from "@/features/roles/components/permission-grid";
@@ -27,10 +28,11 @@ export default async function RoleDetailPage({ params }: { params: Promise<{ id:
   if ("error" in result) {
     return (
       <div className="flex flex-col gap-3">
-        <Link href="/roles" className="text-sm text-text-muted hover:text-text">
+        <Link href="/roles" className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+          <ArrowLeft size={16} aria-hidden="true" />
           Back to roles
         </Link>
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-sm text-destructive">
           {result.error}
         </p>
       </div>
@@ -43,14 +45,19 @@ export default async function RoleDetailPage({ params }: { params: Promise<{ id:
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-2">
-        <Link href="/roles" className="text-sm text-text-muted hover:text-text">
+        <Link href="/roles" className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+          <ArrowLeft size={16} aria-hidden="true" />
           Back to roles
         </Link>
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-semibold">{role.name}</h1>
-          {role.is_system ? <Badge tone="warning">System</Badge> : null}
+          {role.is_system ? (
+            <Badge variant="outline" className="border-warning text-warning">
+              System
+            </Badge>
+          ) : null}
         </div>
-        <code className="text-xs text-text-muted">{role.key}</code>
+        <code className="text-xs text-muted-foreground">{role.key}</code>
       </div>
 
       <section aria-labelledby="role-details" className="flex max-w-xl flex-col gap-4">
@@ -58,9 +65,14 @@ export default async function RoleDetailPage({ params }: { params: Promise<{ id:
           Details
         </h2>
         <RoleForm
-          key={`${role.name}|${role.description}`}
+          key={`${role.name}|${role.description}|${role.is_admin}`}
           mode="edit"
-          role={{ id: role.id, name: role.name, description: role.description }}
+          role={{
+            id: role.id,
+            name: role.name,
+            description: role.description,
+            isAdmin: role.is_admin,
+          }}
           disabledReason={lockedReason}
         />
       </section>

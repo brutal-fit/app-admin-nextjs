@@ -1,24 +1,13 @@
-import { create } from "zustand";
+import { toast } from "sonner";
 
 export type ToastTone = "success" | "error" | "info";
-export type ToastItem = { id: number; tone: ToastTone; message: string };
 
-type ToastState = {
-  toasts: ToastItem[];
-  push: (tone: ToastTone, message: string) => void;
-  dismiss: (id: number) => void;
-};
-
-let nextId = 1;
-
-// UI state only, written from client event handlers, so a module store is safe here.
-export const useToastStore = create<ToastState>()((set) => ({
-  toasts: [],
-  push: (tone, message) =>
-    set((state) => ({ toasts: [...state.toasts, { id: nextId++, tone, message }] })),
-  dismiss: (id) => set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),
-}));
-
+/**
+ * Shows a toast through sonner (the <Toaster> from src/components/ui/sonner is mounted in
+ * the root layout). Kept as the single call site so features do not import sonner directly.
+ */
 export function showToast(tone: ToastTone, message: string): void {
-  useToastStore.getState().push(tone, message);
+  if (tone === "success") toast.success(message);
+  else if (tone === "error") toast.error(message);
+  else toast.info(message);
 }

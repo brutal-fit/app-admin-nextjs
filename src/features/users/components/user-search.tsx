@@ -1,7 +1,9 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { Search } from "@/components/icons";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { listUsersAction } from "@/features/users/actions";
 import { UserTable } from "@/features/users/components/user-table";
 import { USER_PAGE_SIZE } from "@/features/users/schemas";
@@ -37,24 +39,32 @@ export function UserSearch({ initialUsers }: { initialUsers: AdminUserRow[] }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="max-w-md">
-        <Input
-          id="user-search"
-          type="search"
-          label="Search users"
-          placeholder="Name or email"
-          autoComplete="off"
-          onChange={(event) => search(event.target.value)}
-        />
+      <div className="flex max-w-md flex-col gap-2">
+        <Label htmlFor="user-search">Search users</Label>
+        <div className="relative">
+          <Search
+            size={16}
+            aria-hidden="true"
+            className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
+          />
+          <Input
+            id="user-search"
+            type="search"
+            placeholder="Name or email"
+            autoComplete="off"
+            className="pl-9"
+            onChange={(event) => search(event.target.value)}
+          />
+        </div>
       </div>
-      <p aria-live="polite" className="text-xs text-text-muted">
+      <p aria-live="polite" className="text-xs text-muted-foreground">
         {pending
           ? "Searching..."
           : `${users.length} ${users.length === 1 ? "user" : "users"} shown` +
             (users.length === USER_PAGE_SIZE ? ` (first ${USER_PAGE_SIZE}; refine the search)` : "")}
       </p>
       {error ? (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       ) : null}

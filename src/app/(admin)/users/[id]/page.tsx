@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowLeft } from "@/components/icons";
 import { Can } from "@/components/rbac/can";
 import { Badge } from "@/components/ui/badge";
 import { GrantTrainerAccess } from "@/features/users/components/grant-trainer-access";
@@ -42,10 +43,11 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
   if (!result.ok) {
     return (
       <div className="flex flex-col gap-3">
-        <Link href="/users" className="text-sm text-text-muted hover:text-text">
+        <Link href="/users" className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+          <ArrowLeft size={16} aria-hidden="true" />
           Back to users
         </Link>
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-sm text-destructive">
           {result.error}
         </p>
       </div>
@@ -57,21 +59,29 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-2">
-        <Link href="/users" className="text-sm text-text-muted hover:text-text">
+        <Link href="/users" className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+          <ArrowLeft size={16} aria-hidden="true" />
           Back to users
         </Link>
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-semibold">{user.full_name || "Unnamed"}</h1>
-          <Badge tone={user.account_status === "active" ? "success" : "danger"}>
+          <Badge
+            variant="outline"
+            className={
+              user.account_status === "active"
+                ? "border-success text-success"
+                : "border-destructive text-destructive"
+            }
+          >
             {user.account_status}
           </Badge>
         </div>
         <dl className="grid max-w-xl grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm">
-          <dt className="text-text-muted">Email</dt>
+          <dt className="text-muted-foreground">Email</dt>
           <dd>{user.email ?? "No email"}</dd>
-          <dt className="text-text-muted">App role</dt>
+          <dt className="text-muted-foreground">App role</dt>
           <dd>{user.platform_role ?? "None"}</dd>
-          <dt className="text-text-muted">Joined</dt>
+          <dt className="text-muted-foreground">Joined</dt>
           <dd>{new Date(user.created_at).toLocaleDateString("en-IN")}</dd>
         </dl>
       </div>
@@ -83,7 +93,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
         <Can
           permission="users.manage"
           fallback={
-            <p className="text-sm text-text-muted">
+            <p className="text-sm text-muted-foreground">
               {assigned.length === 0
                 ? "No admin roles."
                 : assigned.map((role) => role.name).join(", ")}

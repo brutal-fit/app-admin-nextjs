@@ -4,7 +4,7 @@ import { AdminShell } from "@/components/layout/admin-shell";
 function ShellFallback() {
   return (
     <div className="flex min-h-dvh items-center justify-center">
-      <p className="text-sm text-text-muted">Loading...</p>
+      <p className="text-sm text-muted-foreground">Loading...</p>
     </div>
   );
 }

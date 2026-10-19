@@ -1,45 +1,99 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* Dark is the only theme; <html class="dark"> turns on the dark: variants shadcn ships. */
+@custom-variant dark (&:is(.dark *));
 
 /*
- * Brand tokens shared with the Flutter app. This file is the only place colour values are
- * written; components use the generated utilities (bg-surface, text-text-muted, ...).
- * The default Tailwind palette is cleared so an off-brand colour cannot slip in.
+ * Brand tokens shared with the Flutter app, written as the variables shadcn/ui reads. This
+ * block is the only place colour values are written; components use the generated
+ * utilities (bg-card, text-muted-foreground, ...). There is no light set.
+ */
+:root {
+  --radius: 0.5rem;
+
+  --background: #161616;
+  --foreground: #f5f5f5;
+  --card: #1f1f1f;
+  --card-foreground: #f5f5f5;
+  --popover: #292929;
+  --popover-foreground: #f5f5f5;
+
+  /* The brand accent is for primary actions and the active nav item only. */
+  --primary: #ff5656;
+  /* Dark text on the accent keeps 4.5:1; white on #ff5656 does not. */
+  --primary-foreground: #161616;
+
+  /* shadcn's "accent" is the neutral hover surface, not the brand accent. */
+  --secondary: #292929;
+  --secondary-foreground: #f5f5f5;
+  --muted: #292929;
+  --muted-foreground: #a8a8a8;
+  --accent: #292929;
+  --accent-foreground: #f5f5f5;
+
+  /* White text on this at 60% over the background (shadcn's dark style) keeps 4.5:1. */
+  --destructive: #ff8f8f;
+  --success: #5fd38d;
+  --warning: #f2c14e;
+
+  --border: #3a3a3a;
+  --input: #5a5a5a;
+  --ring: #ff5656;
+}
+
+/*
+ * The default Tailwind palette is cleared so an off-brand colour cannot slip in; white and
+ * black stay because the generated components use them for overlays and text on destructive.
  */
 @theme {
   --color-*: initial;
-
-  --color-bg: #161616;
-  --color-surface: #1f1f1f;
-  --color-surface-raised: #292929;
-  --color-border: #3a3a3a;
-  --color-border-strong: #5a5a5a;
-
-  /* Accent is for primary actions and the active nav item only. */
-  --color-accent: #ff5656;
-  --color-accent-hover: #ff7070;
-  /* Dark text on the accent keeps 4.5:1; white on #ff5656 does not. */
-  --color-on-accent: #161616;
-
-  --color-text: #f5f5f5;
-  --color-text-muted: #a8a8a8;
-  --color-text-subtle: #8c8c8c;
-
-  --color-success: #5fd38d;
-  --color-warning: #f2c14e;
-  --color-danger: #ff8f8f;
-
-  --color-overlay: rgb(0 0 0 / 0.65);
+  --color-white: #ffffff;
+  --color-black: #000000;
 }
 
 @theme inline {
   --font-sans: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-html {
-  color-scheme: dark;
-}
-
-body {
-  background-color: var(--color-bg);
-  color: var(--color-text);
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }
