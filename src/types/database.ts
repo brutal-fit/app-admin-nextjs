@@ -688,6 +688,31 @@ export type Database = {
         Args: { p_from: string; p_to: string };
         Returns: Json;
       };
+      /*
+       * Usage analytics readers (20261020120904_usage_analytics.sql), each jsonb for India
+       * dates [p_from, p_to], 366 days max, analytics.read; validated with Zod in
+       * src/lib/db/usage.ts.
+       */
+      admin_usage_overview: {
+        Args: { p_from: string; p_to: string };
+        Returns: Json;
+      };
+      admin_usage_screens: {
+        Args: { p_from: string; p_to: string };
+        Returns: Json;
+      };
+      admin_usage_funnel: {
+        Args: { p_from: string; p_to: string };
+        Returns: Json;
+      };
+      admin_usage_events: {
+        Args: { p_from: string; p_to: string };
+        Returns: Json;
+      };
+      admin_usage_versions: {
+        Args: { p_from: string; p_to: string };
+        Returns: Json;
+      };
       /** jsonb, the updated trainer_profiles row; needs trainers.edit. */
       admin_update_trainer_profile: {
         Args: { p_trainer: string; p_fields: Json };

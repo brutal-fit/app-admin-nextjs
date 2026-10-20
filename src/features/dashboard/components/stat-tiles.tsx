@@ -3,6 +3,7 @@ import {
   AlertCircle,
   Archive,
   ArrowRight,
+  BarChart2,
   Calendar,
   Clock,
   FileText,
@@ -27,6 +28,7 @@ const TILE_ICONS: Record<TileId, Icon> = {
   "booking-requests": Clock,
   "reported-reviews": Flag,
   "new-users": UserPlus,
+  "active-users": BarChart2,
 };
 
 function TileBody({ tile }: { tile: DashboardTile }) {

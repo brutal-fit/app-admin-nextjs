@@ -67,9 +67,45 @@ export function rangeProblem(range: Pick<AnalyticsRange, "from" | "to">): string
   return null;
 }
 
-export function analyticsHref(range: { preset: RangePreset } | { from: string; to: string }): string {
+/**
+ * "business" reads admin_metrics (metrics.read, the page's own gate); "usage" reads the
+ * admin_usage_* functions and exists only for sessions holding analytics.read.
+ */
+export const ANALYTICS_TABS = ["business", "usage"] as const;
+export type AnalyticsTab = (typeof ANALYTICS_TABS)[number];
+export const DEFAULT_TAB: AnalyticsTab = "business";
+
+export const ANALYTICS_TAB_LABELS: Record<AnalyticsTab, string> = {
+  business: "Business",
+  usage: "Usage",
+};
+
+/** The tabs a session may open, in display order. */
+export function analyticsTabs(canReadUsage: boolean): AnalyticsTab[] {
+  return canReadUsage ? [...ANALYTICS_TABS] : [DEFAULT_TAB];
+}
+
+/** `?tab=usage` opens the Usage tab only when the session may read it; anything else is Business. */
+export function parseAnalyticsTab(params: SearchParams, canReadUsage: boolean): AnalyticsTab {
+  const tab = first(params.tab);
+  return tab === "usage" && canReadUsage ? "usage" : DEFAULT_TAB;
+}
+
+export function analyticsHref(
+  range: { preset: RangePreset } | { from: string; to: string },
+  tab: AnalyticsTab = DEFAULT_TAB,
+): string {
+  const query: string[] = [];
   if ("preset" in range) {
-    return range.preset === DEFAULT_PRESET ? "/analytics" : `/analytics?days=${range.preset}`;
+    if (range.preset !== DEFAULT_PRESET) query.push(`days=${range.preset}`);
+  } else {
+    query.push(`from=${range.from}`, `to=${range.to}`);
   }
-  return `/analytics?from=${range.from}&to=${range.to}`;
+  if (tab !== DEFAULT_TAB) query.push(`tab=${tab}`);
+  return query.length > 0 ? `/analytics?${query.join("&")}` : "/analytics";
+}
+
+/** The same range as a link target, keeping a preset as a preset. */
+export function rangeHrefInput(range: AnalyticsRange): { preset: RangePreset } | { from: string; to: string } {
+  return range.preset !== null ? { preset: range.preset } : { from: range.from, to: range.to };
 }

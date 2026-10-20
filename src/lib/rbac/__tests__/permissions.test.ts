@@ -32,6 +32,7 @@ const SEEDED: Record<string, string> = {
   "audit.read": "audit",
   "audit.export": "audit",
   "metrics.read": "audit",
+  "analytics.read": "audit",
   "catalogue.manage": "settings",
   "announcements.send": "settings",
 };
@@ -52,8 +53,8 @@ function adminRoutes(dir: string): string[] {
 }
 
 describe("permission registry", () => {
-  it("holds 22 keys", () => {
-    expect(PERMISSIONS).toHaveLength(22);
+  it("holds 23 keys", () => {
+    expect(PERMISSIONS).toHaveLength(23);
   });
 
   it("holds exactly the seeded permission keys", () => {

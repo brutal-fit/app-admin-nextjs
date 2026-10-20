@@ -19,6 +19,7 @@ import {
 import { getUser, listUsers } from "@/lib/db/rbac";
 import { countPendingPrivacyRequests } from "@/lib/db/users";
 import { countReportedReviews } from "@/lib/db/reviews";
+import { getUsageOverview } from "@/lib/db/usage";
 import { can } from "@/lib/rbac/can";
 import { PERMISSIONS, type PermissionKey } from "@/lib/rbac/permissions";
 import { toAppError } from "@/lib/supabase/errors";
@@ -36,6 +37,7 @@ import {
   AWAITING_REVIEW_STATUSES,
   applicationListHref,
 } from "@/features/applications/schemas";
+import { DEFAULT_PRESET, analyticsHref } from "@/features/analytics/schemas";
 import { EMPTY_BOOKING_FILTERS, bookingListHref } from "@/features/bookings/schemas";
 import { EMPTY_PRIVACY_FILTERS, privacyListHref } from "@/features/privacy/schemas";
 import { EMPTY_REVIEW_FILTERS, reviewListHref } from "@/features/reviews/schemas";
@@ -69,7 +71,8 @@ export type TileId =
   | "bookings-today"
   | "booking-requests"
   | "reported-reviews"
-  | "new-users";
+  | "new-users"
+  | "active-users";
 
 export type DashboardTile = {
   id: TileId;
@@ -122,6 +125,7 @@ export async function loadDashboardTiles(
     bookingRequests,
     reportedReviews,
     newUsers,
+    activeUsers,
   ] = await Promise.all([
       allowed("support.read")
         ? settle(async () => ({ kind: "count", value: await countOpenSafetyCases(client) }))
@@ -174,6 +178,13 @@ export async function loadDashboardTiles(
             return { kind: "count", value: recent, capped: recent >= USER_MAX_PAGE };
           })
         : Promise.resolve(needs("users.read")),
+      allowed("analytics.read")
+        ? settle(async () => {
+            // Today's distinct users from the overview's totals for a one-day range.
+            const overview = await getUsageOverview(client, { from: today, to: today });
+            return { kind: "count", value: overview.totals.active_users };
+          })
+        : Promise.resolve(needs("analytics.read")),
     ]);
 
   const tiles: DashboardTile[] = [];
@@ -255,6 +266,18 @@ export async function loadDashboardTiles(
       href: "/users?joined=week",
       urgent: false,
       value: newUsers,
+    },
+    {
+      id: "active-users",
+      label: "Active users today",
+      hint: "Signed-in app users with at least one event today, India time.",
+      // The Usage tab lives on /analytics, which also needs metrics.read.
+      href: allowed("metrics.read") ? analyticsHref({ preset: DEFAULT_PRESET }, "usage") : null,
+      linkNote: allowed("metrics.read")
+        ? undefined
+        : `The Usage tab also needs the ${permissionName("metrics.read")} permission.`,
+      urgent: false,
+      value: activeUsers,
     },
   ];
 }

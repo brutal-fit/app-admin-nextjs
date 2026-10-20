@@ -213,6 +213,22 @@ export const PERMISSIONS = [
     apis: [],
     components: ["range-picker", "metric-tiles", "chart-card"],
   },
+  {
+    key: "analytics.read",
+    group: "audit",
+    name: "Read app usage analytics",
+    // No route of its own: the Usage tab lives on /analytics, which stays under metrics.read.
+    routes: [],
+    apis: [],
+    components: [
+      "usage-report",
+      "retention-grid",
+      "funnel-chart",
+      "screens-table",
+      "versions-table",
+      "event-day-chart",
+    ],
+  },
 ] as const satisfies readonly PermissionDefinition[];
 
 export type Permission = (typeof PERMISSIONS)[number];

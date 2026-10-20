@@ -8,17 +8,28 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  DEFAULT_TAB,
   RANGE_PRESETS,
   analyticsHref,
   type AnalyticsRange,
+  type AnalyticsTab,
 } from "@/features/analytics/schemas";
 import { isIsoDate } from "@/lib/utils/time";
 
 /**
  * The analytics range: presets for the last 7, 30 and 90 days as links, and a custom range
- * form. The range lives in the URL, so a view can be shared. Gated by metrics.read.
+ * form. The range lives in the URL, so a view can be shared, and keeps the open tab.
+ * Gated by metrics.read.
  */
-export function RangePicker({ range, today }: { range: AnalyticsRange; today: string }) {
+export function RangePicker({
+  range,
+  today,
+  tab = DEFAULT_TAB,
+}: {
+  range: AnalyticsRange;
+  today: string;
+  tab?: AnalyticsTab;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [from, setFrom] = useState(range.from);
@@ -27,7 +38,7 @@ export function RangePicker({ range, today }: { range: AnalyticsRange; today: st
   function onApply(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!isIsoDate(from) || !isIsoDate(to)) return;
-    startTransition(() => router.push(analyticsHref({ from, to })));
+    startTransition(() => router.push(analyticsHref({ from, to }, tab)));
   }
 
   return (
@@ -38,7 +49,7 @@ export function RangePicker({ range, today }: { range: AnalyticsRange; today: st
           id: String(preset),
           label: `Last ${preset} days`,
           active: range.preset === preset,
-          href: analyticsHref({ preset }),
+          href: analyticsHref({ preset }, tab),
         }))}
       />
       <form onSubmit={onApply} aria-label="Custom range" className="flex flex-wrap items-end gap-2">

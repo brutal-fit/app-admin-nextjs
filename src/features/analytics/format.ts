@@ -27,6 +27,19 @@ export function formatPercent(value: number | null): string {
   return value === null ? "No data" : `${Math.round(value * 100)}%`;
 }
 
+/** "83.3%" from 0.8333: one decimal, for usage shares; "No data" without a value. */
+export function formatShare(value: number | null): string {
+  return value === null ? "No data" : `${(value * 100).toFixed(1)}%`;
+}
+
+/** "4:05" from 245000 ms (m:ss, minutes keep counting past an hour); "No data" without one. */
+export function formatDuration(ms: number | null): string {
+  if (ms === null) return "No data";
+  const seconds = Math.max(0, Math.round(ms / 1000));
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
 export function formatCount(value: number): string {
   return value.toLocaleString("en-IN");
 }
