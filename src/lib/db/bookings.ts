@@ -157,6 +157,8 @@ const bookingRowSchema = z.object({
   dispute_note: text,
   dispute_resolved_at: text,
   dispute_resolved_by: text,
+  // Optional so a reply from before the live-location migration still parses.
+  arrived_at: text,
   created_at: z.string(),
   updated_at: z.string(),
 });
@@ -238,6 +240,7 @@ export async function getBookingDetail(client: AppSupabaseClient, id: string): P
       dispute_note: detail.booking.dispute_note ?? null,
       dispute_resolved_at: detail.booking.dispute_resolved_at ?? null,
       dispute_resolved_by: detail.booking.dispute_resolved_by ?? null,
+      arrived_at: detail.booking.arrived_at ?? null,
     },
     client: party(detail.client),
     trainer: party(detail.trainer),

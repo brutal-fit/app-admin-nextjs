@@ -202,7 +202,8 @@ export type CancelledBy = "client" | "trainer" | "admin";
 
 /**
  * public.bookings (20261013000400_bookings.sql; cancelled_by and the dispute columns from
- * 20261019000500). Admins read every row with bookings.read (bookings_select_admin).
+ * 20261019000500; arrived_at from 20261020124910). Admins read every row with bookings.read
+ * (bookings_select_admin).
  */
 export type BookingRow = {
   id: string;
@@ -225,6 +226,8 @@ export type BookingRow = {
   dispute_note: string | null;
   dispute_resolved_at: string | null;
   dispute_resolved_by: string | null;
+  /** When the trainer marked themselves arrived (mark_arrived); null until then. */
+  arrived_at: string | null;
   created_at: string;
   updated_at: string;
 };

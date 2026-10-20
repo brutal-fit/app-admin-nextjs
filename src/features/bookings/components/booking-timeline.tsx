@@ -47,8 +47,9 @@ function outcomeLabel(outcome: string): string {
 
 /**
  * What happened to the booking, from admin_get_booking's timeline: requested, confirmed,
- * reschedules, cancelled (with who), completed or no-show, and dispute resolutions, each
- * with who did it; an open dispute closes the list. Gated by bookings.read.
+ * reschedules, trainer arrived (from the booking's arrived_at), cancelled (with who),
+ * completed or no-show, and dispute resolutions, each with who did it; an open dispute closes
+ * the list. Gated by bookings.read.
  */
 export function BookingTimeline({
   booking,
@@ -56,7 +57,7 @@ export function BookingTimeline({
   dispute,
   permissions,
 }: {
-  booking: Pick<BookingRow, "status" | "requested_start_at">;
+  booking: Pick<BookingRow, "status" | "requested_start_at" | "arrived_at">;
   timeline: readonly BookingTimelineEvent[];
   dispute: BookingDispute | null;
   permissions: readonly string[];
@@ -83,6 +84,19 @@ export function BookingTimeline({
     ),
     tone: eventTone(entry.event),
   }));
+
+  // Arrival is a booking column, not a timeline event (mark_arrived's notification is not
+  // mapped there), so it is placed by time: after confirmation, before completion.
+  if (booking.arrived_at) {
+    const arrivedAt = new Date(booking.arrived_at).getTime();
+    const next = timeline.findIndex((entry) => new Date(entry.at).getTime() > arrivedAt);
+    entries.splice(next === -1 ? entries.length : next, 0, {
+      key: `arrived-${booking.arrived_at}`,
+      title: "Trainer arrived",
+      at: booking.arrived_at,
+      tone: "bg-primary",
+    });
+  }
 
   if (dispute?.state === "open") {
     const caseHref = dispute.caseId ? permittedHref(permissions, `/support/${dispute.caseId}`) : null;
