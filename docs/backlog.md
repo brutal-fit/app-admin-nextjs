@@ -15,6 +15,7 @@ Prioritised. Status: todo, in progress, done (with date and handoff dir or commi
 | AD-06 | Vitest suite: 133 tests in 23 files (registry, helpers, errors, screens, dashboard, palette, shortcuts) | done 2026-10-19 |
 | AD-08 | `dev` branch created and tracked | done 2026-10-19 |
 | AD-14 | Round 2 leftovers (`../memory/notes/adminops-round2-panel.md`): `/trainers` and `/trainers/[id]` read approved `trainer_applications`, so a `trainers.read`-only role (support) sees the missing-permission notice or "No application on record"; needs a backend read of approved trainers for `trainers.read` (schema change, owner approval). `account.password_reset` is missing from `AUDIT_ACTIONS` and the describers, so it shows raw. | todo |
+| AD-16 | Booking timeline shows "Trainer arrived" (`../memory/.claude/handoffs/2026-10-20-live-location/task-03.md`) | in progress |
 | AD-15 | Usage analytics tab on `/analytics` with dashboard tile and `analytics.read` (owner, 2026-10-20; `../memory/.claude/handoffs/2026-10-20-usage-analytics/task-03.md`) | in progress |
 | AD-10 | Follow-ups from the panel upgrade note (`../memory/notes/admin-panel-polish.md`): user count capped by `admin_list_users` limit (needs a count function), bookings tile depends on an admin read policy on `bookings`, empty "Documents" permission group card, `PGRST303` not mapped | todo |
 | AD-09 | Panel polish (task 19): "needs me now" dashboard, command palette, shortcuts, motion, fitness backdrop, sortable keyboard tables, application timeline | done 2026-10-19, `f154c4c` |
