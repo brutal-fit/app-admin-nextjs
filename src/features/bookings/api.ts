@@ -8,9 +8,11 @@ import {
   type BookingDetail,
   type BookingListRow,
 } from "@/lib/db/bookings";
+import { listUserAvatarsOrEmpty, type UserAvatarMap } from "@/lib/db/avatars";
 import { toAppError } from "@/lib/supabase/errors";
 import type { AppSupabaseClient } from "@/lib/supabase/server";
 import { istDatesToRange } from "@/lib/utils/time";
+import type { SessionAccess } from "@/types/access";
 import { missingPermissionMessage } from "@/features/users/format";
 import {
   BOOKING_PAGE_SIZE,
@@ -27,11 +29,14 @@ export type BookingListResult =
       /** Names for the trainer and client filter chips, when a row on this page has them. */
       trainerName: string | null;
       clientName: string | null;
+      /** Client and trainer avatars for this page; empty without users.read or on failure. */
+      avatars: UserAvatarMap;
     }
   | { ok: false; error: string };
 
 export async function loadBookingList(
   client: AppSupabaseClient,
+  access: SessionAccess,
   filters: BookingFilters,
 ): Promise<BookingListResult> {
   if (invalidDateRange(filters)) {
@@ -51,12 +56,18 @@ export async function loadBookingList(
       offset: (filters.page - 1) * BOOKING_PAGE_SIZE,
     });
     const page = rows.slice(0, BOOKING_PAGE_SIZE);
+    const avatars = await listUserAvatarsOrEmpty(
+      client,
+      access.permissions,
+      page.flatMap((row) => [row.client_id, row.trainer_id]),
+    );
     return {
       ok: true,
       rows: page,
       hasNext: rows.length > BOOKING_PAGE_SIZE,
       trainerName: filters.trainerId ? (page[0]?.trainer_name ?? null) : null,
       clientName: filters.clientId ? (page[0]?.client_name ?? null) : null,
+      avatars,
     };
   } catch (error) {
     return { ok: false, error: toAppError(error).message };

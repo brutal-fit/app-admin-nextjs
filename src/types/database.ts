@@ -663,6 +663,14 @@ export type Database = {
         Args: { p_id: string };
         Returns: Json;
       };
+      /**
+       * jsonb object keyed by user id: { avatar_path, avatar_preset, full_name } (20261021104634);
+       * needs users.read, BRVAL above 200 ids. Validated with Zod in src/lib/db/avatars.ts.
+       */
+      admin_user_avatars: {
+        Args: { p_user_ids: string[] };
+        Returns: Json;
+      };
       /** jsonb { id, account_status, previous_status }; needs users.suspend. */
       admin_set_account_status: {
         Args: { p_user: string; p_status: AccountStatus; p_reason: string };

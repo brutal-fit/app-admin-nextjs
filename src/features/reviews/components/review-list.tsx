@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Avatar } from "@/components/avatar/avatar";
 import { Flag, Star } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -6,6 +7,7 @@ import { formatDateTime } from "@/features/applications/format";
 import { ModerateReviewDialog } from "@/features/reviews/components/moderate-review-dialog";
 import { permittedHref } from "@/features/support/format";
 import { SUPPORT_STATUS_LABELS } from "@/features/support/schemas";
+import type { UserAvatarMap } from "@/lib/db/avatars";
 import type { ReviewListRow, ReviewReportCase } from "@/lib/db/reviews";
 
 const linkClass = "focus-ring rounded-sm font-medium underline-offset-4 hover:underline";
@@ -67,12 +69,15 @@ function Reports({
  */
 export function ReviewList({
   rows,
+  avatars,
   reportCases,
   permissions,
   emptyTitle,
   emptyDescription,
 }: {
   rows: ReviewListRow[];
+  /** The authors' (clients') avatars by user id; a missing id shows initials. */
+  avatars: UserAvatarMap;
   reportCases: Map<string, ReviewReportCase[]> | null;
   permissions: readonly string[];
   emptyTitle: string;
@@ -92,31 +97,34 @@ export function ReviewList({
             className="flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-tile transition-colors hover:bg-surface-raised"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="flex min-w-0 flex-col gap-1">
-                <p className="flex items-center gap-1.5 text-sm font-semibold">
-                  <Star size={16} aria-hidden="true" className="text-warning" />
-                  <span>
-                    {row.rating}
-                    <span className="text-muted-foreground"> of 5</span>
-                  </span>
-                  <span className="font-normal text-muted-foreground">by {author}</span>
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Client{" "}
-                  <NameLink
-                    href={permittedHref(permissions, `/users/${row.client_id}`)}
-                    name={row.client_name || "Unnamed"}
-                  />
-                  {", trainer "}
-                  <NameLink
-                    href={
-                      permittedHref(permissions, `/trainers/${row.trainer_id}`) ??
-                      permittedHref(permissions, `/users/${row.trainer_id}`)
-                    }
-                    name={row.trainer_name || "Unnamed"}
-                  />
-                  {`, ${formatDateTime(row.created_at)}`}
-                </p>
+              <div className="flex min-w-0 items-start gap-3">
+                <Avatar name={row.client_name || author} avatar={avatars[row.client_id]} size="md" />
+                <div className="flex min-w-0 flex-col gap-1">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold">
+                    <Star size={16} aria-hidden="true" className="text-warning" />
+                    <span>
+                      {row.rating}
+                      <span className="text-muted-foreground"> of 5</span>
+                    </span>
+                    <span className="font-normal text-muted-foreground">by {author}</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Client{" "}
+                    <NameLink
+                      href={permittedHref(permissions, `/users/${row.client_id}`)}
+                      name={row.client_name || "Unnamed"}
+                    />
+                    {", trainer "}
+                    <NameLink
+                      href={
+                        permittedHref(permissions, `/trainers/${row.trainer_id}`) ??
+                        permittedHref(permissions, `/users/${row.trainer_id}`)
+                      }
+                      name={row.trainer_name || "Unnamed"}
+                    />
+                    {`, ${formatDateTime(row.created_at)}`}
+                  </p>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 {row.hidden ? (

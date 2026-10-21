@@ -10,6 +10,7 @@ import {
   type ReviewListRow,
   type ReviewReportCase,
 } from "@/lib/db/reviews";
+import { listUserAvatarsOrEmpty, type UserAvatarMap } from "@/lib/db/avatars";
 import { can } from "@/lib/rbac/can";
 import { toAppError } from "@/lib/supabase/errors";
 import type { AppSupabaseClient } from "@/lib/supabase/server";
@@ -29,6 +30,8 @@ export type ReviewsResult =
       others: { rows: ReviewListRow[]; hasNext: boolean } | null;
       /** Open report cases by review id; null without support.read. */
       reportCases: Map<string, ReviewReportCase[]> | null;
+      /** Authors' (clients') avatars for both lists; empty without users.read or on failure. */
+      avatars: UserAvatarMap;
       trainerName: string | null;
     }
   | { ok: false; error: string };
@@ -67,14 +70,21 @@ export async function loadReviews(
     const reportCases = can(access.permissions, "support.read")
       ? await listOpenReportCases(client, reportedIds)
       : null;
+    const shownOthers = others ? others.slice(0, REVIEW_PAGE_SIZE) : null;
+    // Reported (up to 200) plus a page of others can pass the batch cap; the helper splits it.
+    const avatars = await listUserAvatarsOrEmpty(
+      client,
+      access.permissions,
+      [...(reported ?? []), ...(shownOthers ?? [])].map((row) => row.client_id),
+    );
     const firstRow = reported?.[0] ?? others?.[0];
     return {
       ok: true,
       reported: reported ? { rows: reported, capped: reported.length >= REVIEW_LIST_MAX } : null,
-      others: others
-        ? { rows: others.slice(0, REVIEW_PAGE_SIZE), hasNext: others.length > REVIEW_PAGE_SIZE }
-        : null,
+      others:
+        others && shownOthers ? { rows: shownOthers, hasNext: others.length > REVIEW_PAGE_SIZE } : null,
       reportCases,
+      avatars,
       trainerName: filters.trainerId ? (firstRow?.trainer_name ?? null) : null,
     };
   } catch (error) {

@@ -39,6 +39,7 @@ export default async function ReviewsPage({
               </h2>
               <ReviewList
                 rows={result.reported.rows}
+                avatars={result.avatars}
                 reportCases={result.reportCases}
                 permissions={access.permissions}
                 emptyTitle="No reported reviews"
@@ -58,6 +59,7 @@ export default async function ReviewsPage({
               </h2>
               <ReviewList
                 rows={result.others.rows}
+                avatars={result.avatars}
                 reportCases={result.reportCases}
                 permissions={access.permissions}
                 emptyTitle="No reviews"

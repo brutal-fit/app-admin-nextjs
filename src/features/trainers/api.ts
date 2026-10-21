@@ -10,6 +10,7 @@ import {
   listDocuments,
   type DocumentSummaryRow,
 } from "@/lib/db/applications";
+import { listUserAvatarsOrEmpty } from "@/lib/db/avatars";
 import { countBookingsByTrainer } from "@/lib/db/bookings";
 import { listActiveCatalogue } from "@/lib/db/catalogue";
 import {
@@ -21,6 +22,7 @@ import {
 import { can } from "@/lib/rbac/can";
 import { toAppError } from "@/lib/supabase/errors";
 import type { AppSupabaseClient } from "@/lib/supabase/server";
+import type { AvatarRef } from "@/lib/utils/avatar";
 import type { SessionAccess } from "@/types/access";
 import type {
   ApplicationStatus,
@@ -51,6 +53,8 @@ export type TrainerListItem = {
   bookings: number | null;
   homeRateInr: number | null;
   onlineRateInr: number | null;
+  /** From admin_user_avatars; null without users.read or when that call failed (initials). */
+  avatar: AvatarRef | null;
 };
 
 export type TrainerListResult =
@@ -102,13 +106,20 @@ export async function loadTrainerList(
           bookings: bookings ? (bookings.counts.get(application.trainer_id) ?? 0) : null,
           homeRateInr: profile?.approved_home_rate_inr ?? null,
           onlineRateInr: profile?.approved_online_rate_inr ?? null,
+          avatar: null,
         };
       })
       .filter((row) => filter === "all" || row.listed === (filter === "listed"))
       .sort((a, b) => a.name.localeCompare(b.name, "en-IN", { sensitivity: "base" }));
+    // The shown rows only (at most TRAINER_LIST_LIMIT, the batch reader's cap).
+    const avatars = await listUserAvatarsOrEmpty(
+      client,
+      access.permissions,
+      rows.map((row) => row.trainerId),
+    );
     return {
       ok: true,
-      rows,
+      rows: rows.map((row) => ({ ...row, avatar: avatars[row.trainerId] ?? null })),
       capped: applications.length >= TRAINER_LIST_LIMIT,
       bookingsNote: !bookings
         ? missingPermissionMessage("bookings.read", "The bookings column")

@@ -1,11 +1,13 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { Avatar } from "@/components/avatar/avatar";
 import { formatDateTime, formatInr } from "@/features/applications/format";
 import { MODE_LABELS } from "@/features/applications/schemas";
 import { PaymentStatusBadge } from "@/features/bookings/components/payment-status-badge";
 import { CANCELLED_BY_LABELS } from "@/features/bookings/schemas";
 import { permittedHref } from "@/features/support/format";
 import type { BookingDetail as BookingDetailData } from "@/lib/db/bookings";
+import type { AvatarRef } from "@/lib/utils/avatar";
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -16,13 +18,18 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function Party({ href, name }: { href: string | null; name: string }) {
-  return href ? (
-    <Link href={href} className="focus-ring rounded-sm font-medium underline-offset-4 hover:underline">
-      {name}
-    </Link>
-  ) : (
-    <span className="font-medium">{name}</span>
+function Party({ href, name, avatar }: { href: string | null; name: string; avatar: AvatarRef | null }) {
+  return (
+    <span className="inline-flex items-center gap-2">
+      <Avatar name={name} avatar={avatar} size="md" />
+      {href ? (
+        <Link href={href} className="focus-ring rounded-sm font-medium underline-offset-4 hover:underline">
+          {name}
+        </Link>
+      ) : (
+        <span className="font-medium">{name}</span>
+      )}
+    </span>
   );
 }
 
@@ -61,10 +68,14 @@ export function BookingDetail({
       <Card id="booking-parties" title="Parties">
         <dl className="grid grid-cols-[minmax(7rem,auto)_1fr] gap-x-4 gap-y-2 text-sm">
           <Row label="Client">
-            <Party href={permittedHref(permissions, `/users/${booking.client_id}`)} name={clientName} />
+            <Party
+              href={permittedHref(permissions, `/users/${booking.client_id}`)}
+              name={clientName}
+              avatar={detail.client?.avatar ?? null}
+            />
           </Row>
           <Row label="Trainer">
-            <Party href={trainerHref} name={trainerName} />
+            <Party href={trainerHref} name={trainerName} avatar={detail.trainer?.avatar ?? null} />
           </Row>
         </dl>
       </Card>

@@ -1,6 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { listUserAvatars, type UserAvatarMap } from "@/lib/db/avatars";
 import { assignRole, listUsers, revokeRole, setPlatformRole } from "@/lib/db/rbac";
 import { processPrivacyRequest, setAccountStatus } from "@/lib/db/users";
 import { runAction } from "@/server/run-action";
@@ -9,6 +10,7 @@ import {
   listUsersSchema,
   processPrivacyRequestSchema,
   setAccountStatusSchema,
+  userAvatarsSchema,
   userRoleSchema,
 } from "@/features/users/schemas";
 import type { ActionResult } from "@/types/action-result";
@@ -17,6 +19,13 @@ import type { AccountStatus, AdminUserRow } from "@/types/database";
 export async function listUsersAction(input: unknown): Promise<ActionResult<AdminUserRow[]>> {
   return runAction(listUsersSchema, input, "users.read", (data, { supabase }) =>
     listUsers(supabase, data),
+  );
+}
+
+/** Avatars for the rows a search returned; the caller keeps initials when this fails. */
+export async function userAvatarsAction(input: unknown): Promise<ActionResult<UserAvatarMap>> {
+  return runAction(userAvatarsSchema, input, "users.read", (data, { supabase }) =>
+    listUserAvatars(supabase, data.ids),
   );
 }
 

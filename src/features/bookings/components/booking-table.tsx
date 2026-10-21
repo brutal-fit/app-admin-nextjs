@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Avatar } from "@/components/avatar/avatar";
 import { ArrowRight, Calendar } from "@/components/icons";
 import { DataTable, type DataTableColumn } from "@/components/data-table/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -11,21 +12,31 @@ import { PaymentStatusBadge } from "@/features/bookings/components/payment-statu
 import { formatSessionRange } from "@/features/bookings/format";
 import { PAYMENT_STATUS_LABELS } from "@/features/bookings/schemas";
 import { BOOKING_STATUS_LABELS } from "@/features/users/format";
+import type { UserAvatarMap } from "@/lib/db/avatars";
 import type { BookingListRow } from "@/lib/db/bookings";
+import type { AvatarRef } from "@/lib/utils/avatar";
 
 const linkClass = "focus-ring rounded-sm underline-offset-4 hover:underline";
 
-function PartyLink({ href, name }: { href: string | null; name: string }) {
-  return href ? (
-    <Link href={href} className={linkClass}>
-      {name}
-    </Link>
-  ) : (
-    <>{name}</>
+function PartyLink({ href, name, avatar }: { href: string | null; name: string; avatar: AvatarRef | undefined }) {
+  return (
+    <span className="flex items-center gap-2">
+      <Avatar name={name} avatar={avatar} />
+      {href ? (
+        <Link href={href} className={linkClass}>
+          {name}
+        </Link>
+      ) : (
+        name
+      )}
+    </span>
   );
 }
 
-function columns(links: { users: boolean; trainers: boolean }): DataTableColumn<BookingListRow>[] {
+function columns(
+  links: { users: boolean; trainers: boolean },
+  avatars: UserAvatarMap,
+): DataTableColumn<BookingListRow>[] {
   return [
     {
       id: "session",
@@ -45,6 +56,7 @@ function columns(links: { users: boolean; trainers: boolean }): DataTableColumn<
         <PartyLink
           href={links.users ? `/users/${row.client_id}` : null}
           name={row.client_name || "Unnamed"}
+          avatar={avatars[row.client_id]}
         />
       ),
     },
@@ -56,6 +68,7 @@ function columns(links: { users: boolean; trainers: boolean }): DataTableColumn<
         <PartyLink
           href={links.trainers ? `/trainers/${row.trainer_id}` : links.users ? `/users/${row.trainer_id}` : null}
           name={row.trainer_name || "Unnamed"}
+          avatar={avatars[row.trainer_id]}
         />
       ),
     },
@@ -101,11 +114,14 @@ function columns(links: { users: boolean; trainers: boolean }): DataTableColumn<
  */
 export function BookingTable({
   rows,
+  avatars,
   filtered,
   usersVisible,
   trainersVisible,
 }: {
   rows: BookingListRow[];
+  /** Avatars by user id; a missing id shows initials. */
+  avatars: UserAvatarMap;
   filtered: boolean;
   usersVisible: boolean;
   trainersVisible: boolean;
@@ -113,7 +129,7 @@ export function BookingTable({
   return (
     <DataTable
       rows={rows}
-      columns={columns({ users: usersVisible, trainers: trainersVisible })}
+      columns={columns({ users: usersVisible, trainers: trainersVisible }, avatars)}
       rowKey={(row) => row.id}
       caption="Bookings"
       countLabel={(count) => `${count} ${count === 1 ? "booking" : "bookings"} on this page`}

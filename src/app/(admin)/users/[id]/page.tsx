@@ -1,3 +1,4 @@
+import { Avatar } from "@/components/avatar/avatar";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatusPulse } from "@/components/motion/status-pulse";
 import { Can } from "@/components/rbac/can";
@@ -15,6 +16,7 @@ import { getUserDetail } from "@/lib/db/users";
 import { can } from "@/lib/rbac/can";
 import { requireRoutePermission } from "@/lib/rbac/require-permission";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { toAvatarRef } from "@/lib/utils/avatar";
 import { SERVICE_ROLE_MISSING_MESSAGE, toAppError } from "@/lib/supabase/errors";
 import { isServiceRoleConfigured } from "@/server/service-client";
 
@@ -86,7 +88,9 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
           </StatusPulse>
         }
       >
-        <dl className="grid max-w-xl grid-cols-[auto_1fr] gap-x-6 gap-y-1 rounded-xl border bg-card p-4 text-sm shadow-tile">
+        <div className="flex max-w-xl items-start gap-4 rounded-xl border bg-card p-4 shadow-tile">
+          <Avatar name={name} avatar={toAvatarRef(detail.avatar_path, detail.avatar_preset)} size="lg" />
+          <dl className="grid min-w-0 flex-1 grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm">
           <dt className="text-muted-foreground">Email</dt>
           <dd>{detail.email ?? "No email"}</dd>
           <dt className="text-muted-foreground">Username</dt>
@@ -95,7 +99,8 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
           <dd>{detail.platform_role ?? "None"}</dd>
           <dt className="text-muted-foreground">Joined</dt>
           <dd>{new Date(detail.created_at).toLocaleDateString("en-IN")}</dd>
-        </dl>
+          </dl>
+        </div>
       </PageHeader>
 
       <section aria-labelledby="user-account" className="flex max-w-3xl flex-col gap-3">

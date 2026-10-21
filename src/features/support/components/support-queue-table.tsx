@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Avatar } from "@/components/avatar/avatar";
 import { ArrowRight, LifeBuoy } from "@/components/icons";
 import { DataTable, type DataTableColumn } from "@/components/data-table/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -45,17 +46,21 @@ function columns(usersVisible: boolean): DataTableColumn<SupportQueueItem>[] {
       id: "reporter",
       header: "Reporter",
       sortValue: (row) => row.reporterName,
-      cell: (row) =>
-        usersVisible ? (
-          <Link
-            href={`/users/${row.reporterId}`}
-            className="focus-ring rounded-sm underline-offset-4 hover:underline"
-          >
-            {row.reporterName}
-          </Link>
-        ) : (
-          row.reporterName
-        ),
+      cell: (row) => (
+        <span className="flex items-center gap-2">
+          <Avatar name={row.reporterName} avatar={row.reporterAvatar} />
+          {usersVisible ? (
+            <Link
+              href={`/users/${row.reporterId}`}
+              className="focus-ring rounded-sm underline-offset-4 hover:underline"
+            >
+              {row.reporterName}
+            </Link>
+          ) : (
+            row.reporterName
+          )}
+        </span>
+      ),
     },
     {
       id: "category",
@@ -74,7 +79,14 @@ function columns(usersVisible: boolean): DataTableColumn<SupportQueueItem>[] {
       header: "Assignee",
       sortValue: (row) => row.assigneeName,
       cell: (row) =>
-        row.assigneeName ?? <span className="text-muted-foreground">Unassigned</span>,
+        row.assigneeName ? (
+          <span className="flex items-center gap-2">
+            <Avatar name={row.assigneeName} avatar={row.assigneeAvatar} />
+            {row.assigneeName}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">Unassigned</span>
+        ),
     },
     {
       id: "updated",

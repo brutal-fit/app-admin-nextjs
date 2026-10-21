@@ -63,6 +63,9 @@ const userDetailSchema = z.object({
   username: text,
   platform_role: z.enum(["client", "trainer"]).nullable().optional(),
   account_status: z.enum(ACCOUNT_STATUS_VALUES),
+  // Since 20261021104634; optional so an older reply still parses.
+  avatar_path: text,
+  avatar_preset: text,
   roles: z.array(z.string()),
   created_at: z.string(),
   counts: z.object({

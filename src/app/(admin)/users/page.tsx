@@ -3,6 +3,7 @@ import { Can } from "@/components/rbac/can";
 import { CreateUserDialog } from "@/features/users/components/create-user-dialog";
 import { UserSearch } from "@/features/users/components/user-search";
 import { USER_MAX_PAGE, USER_PAGE_SIZE, parseUserFilters } from "@/features/users/schemas";
+import { listUserAvatarsOrEmpty } from "@/lib/db/avatars";
 import { listRoles, listUsers } from "@/lib/db/rbac";
 import { requireRoutePermission } from "@/lib/rbac/require-permission";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -15,7 +16,7 @@ export default async function UsersPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requireRoutePermission("/users");
+  const access = await requireRoutePermission("/users");
   const params = await searchParams;
   const initialFilters = parseUserFilters(params.joined);
   // The "joined" link (dashboard tile) loads the largest page so the filter sees every
@@ -26,6 +27,15 @@ export default async function UsersPage({
     listUsers(supabase, { query: "", limit: pageSize, offset: 0 }),
     listRoles(supabase),
   ]);
+  // One batch call for the rows shown; a failure only costs the avatars.
+  const avatars =
+    users.status === "fulfilled"
+      ? await listUserAvatarsOrEmpty(
+          supabase,
+          access.permissions,
+          users.value.map((user) => user.id),
+        )
+      : {};
   const assignable =
     roles.status === "fulfilled"
       ? roles.value.map((role) => ({ id: role.id, name: role.name, key: role.key }))
@@ -50,6 +60,7 @@ export default async function UsersPage({
       {users.status === "fulfilled" ? (
         <UserSearch
           initialUsers={users.value}
+          initialAvatars={avatars}
           initialFilters={initialFilters}
           joinedSince={daysAgoIso(7)}
           pageSize={pageSize}

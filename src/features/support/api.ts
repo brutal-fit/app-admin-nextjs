@@ -9,9 +9,11 @@ import {
   listTeam,
   type SupportCaseDetail,
 } from "@/lib/db/support";
+import { listUserAvatarsOrEmpty } from "@/lib/db/avatars";
 import { can } from "@/lib/rbac/can";
 import { toAppError } from "@/lib/supabase/errors";
 import type { AppSupabaseClient } from "@/lib/supabase/server";
+import type { AvatarRef } from "@/lib/utils/avatar";
 import type { SessionAccess } from "@/types/access";
 import type { SupportCaseListRow } from "@/types/database";
 import {
@@ -45,6 +47,9 @@ export type SupportQueueItem = {
   reporterName: string;
   assigneeId: string | null;
   assigneeName: string | null;
+  /** From admin_user_avatars; null without users.read or when that call failed (initials). */
+  reporterAvatar: AvatarRef | null;
+  assigneeAvatar: AvatarRef | null;
   targetLabel: string | null;
   eventCount: number;
   createdAt: string;
@@ -92,6 +97,8 @@ function toQueueItem(row: SupportCaseListRow): SupportQueueItem {
     reporterName: row.reporter_name || "Unnamed",
     assigneeId: row.assignee_id,
     assigneeName: row.assignee_id ? row.assignee_name || "Unnamed" : null,
+    reporterAvatar: null,
+    assigneeAvatar: null,
     targetLabel: row.target_label,
     eventCount: Number(row.event_count),
     createdAt: row.created_at,
@@ -117,9 +124,19 @@ export async function loadSupportQueue(
       }),
       loadTeam(client, access),
     ]);
+    const items = rows.slice(0, SUPPORT_PAGE_SIZE).map(toQueueItem);
+    const avatars = await listUserAvatarsOrEmpty(
+      client,
+      access.permissions,
+      items.flatMap((item) => [item.reporterId, item.assigneeId]),
+    );
     return {
       ok: true,
-      rows: rows.slice(0, SUPPORT_PAGE_SIZE).map(toQueueItem),
+      rows: items.map((item) => ({
+        ...item,
+        reporterAvatar: avatars[item.reporterId] ?? null,
+        assigneeAvatar: item.assigneeId ? (avatars[item.assigneeId] ?? null) : null,
+      })),
       hasNext: rows.length > SUPPORT_PAGE_SIZE,
       team,
     };

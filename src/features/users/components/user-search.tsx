@@ -5,9 +5,10 @@ import { Search } from "@/components/icons";
 import { FilterChips } from "@/components/data-table/filter-chips";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { listUsersAction } from "@/features/users/actions";
+import { listUsersAction, userAvatarsAction } from "@/features/users/actions";
 import { UserTable } from "@/features/users/components/user-table";
 import { USER_PAGE_SIZE, USER_FILTERS, type UserFilter } from "@/features/users/schemas";
+import type { UserAvatarMap } from "@/lib/db/avatars";
 import type { AdminUserRow } from "@/types/database";
 
 const DEBOUNCE_MS = 300;
@@ -42,11 +43,14 @@ function matches(user: AdminUserRow, filter: UserFilter, joinedSince: string): b
  */
 export function UserSearch({
   initialUsers,
+  initialAvatars = {},
   initialFilters = [],
   joinedSince,
   pageSize = USER_PAGE_SIZE,
 }: {
   initialUsers: AdminUserRow[];
+  /** Avatars the server loaded for initialUsers; rows without one show initials. */
+  initialAvatars?: UserAvatarMap;
   initialFilters?: UserFilter[];
   /** ISO timestamp seven days before the server render, for "Joined last 7 days". */
   joinedSince: string;
@@ -54,6 +58,7 @@ export function UserSearch({
   pageSize?: number;
 }) {
   const [users, setUsers] = useState(initialUsers);
+  const [avatars, setAvatars] = useState<UserAvatarMap>(initialAvatars);
   const [loadedLimit, setLoadedLimit] = useState(pageSize);
   const [filters, setFilters] = useState<UserFilter[]>(initialFilters);
   const [error, setError] = useState<string | null>(null);
@@ -76,8 +81,18 @@ export function UserSearch({
         setError(null);
         setUsers(result.data);
         setLoadedLimit(USER_PAGE_SIZE);
+        loadAvatars(result.data);
       });
     }, DEBOUNCE_MS);
+  }
+
+  // Avatars for rows not seen yet, once per result; a failure leaves initials in place.
+  function loadAvatars(rows: AdminUserRow[]) {
+    const missing = rows.map((user) => user.id).filter((id) => !(id in avatars));
+    if (missing.length === 0) return;
+    void userAvatarsAction({ ids: missing }).then((result) => {
+      if (result.ok) setAvatars((current) => ({ ...current, ...result.data }));
+    });
   }
 
   const shown = useMemo(
@@ -131,6 +146,7 @@ export function UserSearch({
       ) : null}
       <UserTable
         users={shown}
+        avatars={avatars}
         loading={pending}
         countLabel={(count) => {
           const noun = count === 1 ? "user" : "users";

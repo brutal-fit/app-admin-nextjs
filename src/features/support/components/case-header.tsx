@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { Avatar } from "@/components/avatar/avatar";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatusPulse } from "@/components/motion/status-pulse";
 import { formatDateTime } from "@/features/applications/format";
@@ -8,6 +9,7 @@ import { SupportPriorityBadge } from "@/features/support/components/support-prio
 import { SupportStatusBadge } from "@/features/support/components/support-status-badge";
 import { permittedHref, supportStatusTone } from "@/features/support/format";
 import { SUPPORT_CATEGORY_LABELS } from "@/features/support/schemas";
+import { toAvatarRef } from "@/lib/utils/avatar";
 
 const BACK = { href: "/support", label: "Back to the queue" };
 
@@ -53,25 +55,43 @@ export function CaseHeader({
         </Meta>
         <Meta label="Category">{SUPPORT_CATEGORY_LABELS[supportCase.category]}</Meta>
         <Meta label="Reporter">
-          {reporterHref ? (
-            <Link
-              href={reporterHref}
-              className="focus-ring rounded-sm font-medium underline-offset-4 hover:underline"
-            >
-              {reporterName}
-            </Link>
-          ) : (
-            reporterName
-          )}
-          {reporter?.role ? (
-            <span className="text-muted-foreground"> ({reporter.role})</span>
-          ) : null}
-          {reporter?.account_status === "suspended" ? (
-            <span className="block text-xs text-destructive">Account suspended</span>
-          ) : null}
+          <span className="flex items-start gap-2">
+            <Avatar
+              name={reporterName}
+              avatar={reporter ? toAvatarRef(reporter.avatar_path, reporter.avatar_preset) : null}
+            />
+            <span className="min-w-0">
+              {reporterHref ? (
+                <Link
+                  href={reporterHref}
+                  className="focus-ring rounded-sm font-medium underline-offset-4 hover:underline"
+                >
+                  {reporterName}
+                </Link>
+              ) : (
+                reporterName
+              )}
+              {reporter?.role ? (
+                <span className="text-muted-foreground"> ({reporter.role})</span>
+              ) : null}
+              {reporter?.account_status === "suspended" ? (
+                <span className="block text-xs text-destructive">Account suspended</span>
+              ) : null}
+            </span>
+          </span>
         </Meta>
         <Meta label="Assignee">
-          {assignee ? (assignee.name || "Unnamed") : <span className="text-muted-foreground">Unassigned</span>}
+          {assignee ? (
+            <span className="flex items-center gap-2">
+              <Avatar
+                name={assignee.name || "Unnamed"}
+                avatar={toAvatarRef(assignee.avatar_path, assignee.avatar_preset)}
+              />
+              {assignee.name || "Unnamed"}
+            </span>
+          ) : (
+            <span className="text-muted-foreground">Unassigned</span>
+          )}
         </Meta>
         <Meta label="Created">{formatDateTime(supportCase.created_at)}</Meta>
         <Meta label="Last change">{formatDateTime(supportCase.updated_at)}</Meta>

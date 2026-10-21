@@ -1,10 +1,12 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { Avatar } from "@/components/avatar/avatar";
 import { ArrowRight } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 import { formatDateTime } from "@/features/applications/format";
 import type { SupportCaseDetail, SupportTargetDetail } from "@/lib/db/support";
 import { routePermission } from "@/lib/rbac/permissions";
+import { toAvatarRef, type AvatarRef } from "@/lib/utils/avatar";
 import { excerpt, permittedHref } from "@/features/support/format";
 
 type Target = NonNullable<SupportCaseDetail["target"]>;
@@ -25,20 +27,27 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 function PersonLink({
   id,
   name,
+  avatar,
   permissions,
 }: {
   id: string | null | undefined;
   name: string | null | undefined;
+  avatar: AvatarRef;
   permissions: readonly string[];
 }) {
   const label = name || "Unnamed";
   const href = id ? permittedHref(permissions, `/users/${id}`) : null;
-  return href ? (
-    <Link href={href} className="focus-ring rounded-sm underline-offset-4 hover:underline">
-      {label}
-    </Link>
-  ) : (
-    <>{label}</>
+  return (
+    <span className="inline-flex items-center gap-2">
+      <Avatar name={label} avatar={avatar} />
+      {href ? (
+        <Link href={href} className="focus-ring rounded-sm underline-offset-4 hover:underline">
+          {label}
+        </Link>
+      ) : (
+        label
+      )}
+    </span>
   );
 }
 
@@ -74,10 +83,20 @@ function Detail({
               {detail.mode ? <span className="text-muted-foreground"> ({detail.mode})</span> : null}
             </Row>
             <Row label="Client">
-              <PersonLink id={detail.client_id} name={detail.client_name} permissions={permissions} />
+              <PersonLink
+                id={detail.client_id}
+                name={detail.client_name}
+                avatar={toAvatarRef(detail.client_avatar_path, detail.client_avatar_preset)}
+                permissions={permissions}
+              />
             </Row>
             <Row label="Trainer">
-              <PersonLink id={detail.trainer_id} name={detail.trainer_name} permissions={permissions} />
+              <PersonLink
+                id={detail.trainer_id}
+                name={detail.trainer_name}
+                avatar={toAvatarRef(detail.trainer_avatar_path, detail.trainer_avatar_preset)}
+                permissions={permissions}
+              />
             </Row>
             <Row label="Status">
               <span className="capitalize">{words(detail.status)}</span>
@@ -102,7 +121,15 @@ function Detail({
       return (
         <>
           <dl className="flex flex-col gap-2">
-            <Row label="Name">{detail.name || "Unnamed"}</Row>
+            <Row label="Name">
+              <span className="inline-flex items-center gap-2">
+                <Avatar
+                  name={detail.name || "Unnamed"}
+                  avatar={toAvatarRef(detail.avatar_path, detail.avatar_preset)}
+                />
+                {detail.name || "Unnamed"}
+              </span>
+            </Row>
             <Row label="Username">{detail.username ? `@${detail.username}` : "None"}</Row>
             <Row label="Role">
               <span className="capitalize">{words(detail.role)}</span>
@@ -139,7 +166,12 @@ function Detail({
       return (
         <dl className="flex flex-col gap-2">
           <Row label="Sent by">
-            <PersonLink id={detail.sender_id} name={detail.sender_name} permissions={permissions} />
+            <PersonLink
+              id={detail.sender_id}
+              name={detail.sender_name}
+              avatar={toAvatarRef(detail.sender_avatar_path, detail.sender_avatar_preset)}
+              permissions={permissions}
+            />
           </Row>
           <Row label="Sent">{formatDateTime(detail.created_at ?? null)}</Row>
           <Row label="Excerpt">{excerpt(detail.body) || "Empty message."}</Row>

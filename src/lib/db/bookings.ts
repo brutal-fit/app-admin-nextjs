@@ -9,6 +9,7 @@
 import { z } from "zod";
 import { AppError, toAppError } from "@/lib/supabase/errors";
 import type { AppSupabaseClient } from "@/lib/supabase/server";
+import { toAvatarRef, type AvatarRef } from "@/lib/utils/avatar";
 import type {
   AdminBookingListRow,
   BookingRow,
@@ -163,7 +164,11 @@ const bookingRowSchema = z.object({
   updated_at: z.string(),
 });
 
-const partySchema = z.object({ id: z.string(), name: text }).nullable().optional();
+// avatar_path and avatar_preset since 20261021104634; optional so an older reply still parses.
+const partySchema = z
+  .object({ id: z.string(), name: text, avatar_path: text, avatar_preset: text })
+  .nullable()
+  .optional();
 
 const timelineEventSchema = z.object({
   event: z.string(),
@@ -187,7 +192,7 @@ const bookingDetailSchema = z.object({
   address: z.string().nullable().optional(),
 });
 
-export type BookingParty = { id: string; name: string | null };
+export type BookingParty = { id: string; name: string | null; avatar: AvatarRef };
 
 export type BookingTimelineEvent = {
   /** created, confirmed, reschedule_requested, rescheduled, reschedule_declined, cancelled, completed, no_show, dispute_resolved; others shown as they come. */
@@ -232,7 +237,9 @@ export async function getBookingDetail(client: AppSupabaseClient, id: string): P
   }
   const detail = parsed.data;
   const party = (value: z.output<typeof partySchema>): BookingParty | null =>
-    value ? { id: value.id, name: value.name ?? null } : null;
+    value
+      ? { id: value.id, name: value.name ?? null, avatar: toAvatarRef(value.avatar_path, value.avatar_preset) }
+      : null;
   return {
     booking: {
       ...detail.booking,

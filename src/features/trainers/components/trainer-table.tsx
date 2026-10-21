@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Avatar } from "@/components/avatar/avatar";
 import { ArrowRight, UserCheck } from "@/components/icons";
 import { DataTable, type DataTableColumn } from "@/components/data-table/data-table";
 import { Badge } from "@/components/ui/badge";
@@ -23,12 +24,15 @@ const COLUMNS: DataTableColumn<TrainerListItem>[] = [
     header: "Trainer",
     sortValue: (row) => row.name,
     cell: (row) => (
-      <Link
-        href={`/trainers/${row.trainerId}`}
-        className="focus-ring rounded-sm font-medium underline-offset-4 hover:underline"
-      >
-        {row.name}
-      </Link>
+      <span className="flex items-center gap-2">
+        <Avatar name={row.name} avatar={row.avatar} />
+        <Link
+          href={`/trainers/${row.trainerId}`}
+          className="focus-ring rounded-sm font-medium underline-offset-4 hover:underline"
+        >
+          {row.name}
+        </Link>
+      </span>
     ),
   },
   {

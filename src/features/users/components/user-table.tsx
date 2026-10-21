@@ -2,29 +2,34 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { Avatar } from "@/components/avatar/avatar";
 import { ArrowRight, Users } from "@/components/icons";
 import { DataTable, type DataTableColumn } from "@/components/data-table/data-table";
 import { StatusPulse } from "@/components/motion/status-pulse";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import type { UserAvatarMap } from "@/lib/db/avatars";
 import type { AdminUserRow } from "@/types/database";
 
 function statusTone(status: AdminUserRow["account_status"]): string {
   return status === "active" ? "border-success text-success" : "border-destructive text-destructive";
 }
 
-const COLUMNS: DataTableColumn<AdminUserRow>[] = [
+const columns = (avatars: UserAvatarMap): DataTableColumn<AdminUserRow>[] => [
   {
     id: "name",
     header: "Name",
     sortValue: (user) => user.full_name || null,
     cell: (user) => (
-      <Link
-        href={`/users/${user.id}`}
-        className="focus-ring rounded-sm font-medium underline-offset-4 hover:underline"
-      >
-        {user.full_name || "Unnamed"}
-      </Link>
+      <span className="flex items-center gap-2">
+        <Avatar name={user.full_name} avatar={avatars[user.id]} />
+        <Link
+          href={`/users/${user.id}`}
+          className="focus-ring rounded-sm font-medium underline-offset-4 hover:underline"
+        >
+          {user.full_name || "Unnamed"}
+        </Link>
+      </span>
     ),
   },
   {
@@ -83,12 +88,15 @@ const COLUMNS: DataTableColumn<AdminUserRow>[] = [
 
 export function UserTable({
   users,
+  avatars = {},
   loading = false,
   toolbar,
   countLabel,
   emptyDescription = "Try a different name or email.",
 }: {
   users: AdminUserRow[];
+  /** Avatars by user id from admin_user_avatars; a missing id shows initials. */
+  avatars?: UserAvatarMap;
   loading?: boolean;
   toolbar?: ReactNode;
   countLabel?: (count: number) => string;
@@ -97,7 +105,7 @@ export function UserTable({
   return (
     <DataTable
       rows={users}
-      columns={COLUMNS}
+      columns={columns(avatars)}
       rowKey={(user) => user.id}
       caption="Users"
       loading={loading}

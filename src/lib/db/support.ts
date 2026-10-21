@@ -43,7 +43,8 @@ const REPORT_CATEGORY_VALUES = [
 const text = z.string().nullable().optional();
 
 // The detail is jsonb, so its shape is checked before the panel renders it. Optional fields
-// read as absent rather than failing the page when the backend leaves one out.
+// read as absent rather than failing the page when the backend leaves one out (the avatar
+// keys arrived with 20261021104634).
 const bookingTargetSchema = z.object({
   kind: z.literal("booking"),
   id: z.string(),
@@ -56,8 +57,12 @@ const bookingTargetSchema = z.object({
   price_snapshot_inr: z.number().nullable().optional(),
   client_id: text,
   client_name: text,
+  client_avatar_path: text,
+  client_avatar_preset: text,
   trainer_id: text,
   trainer_name: text,
+  trainer_avatar_path: text,
+  trainer_avatar_preset: text,
 });
 
 const userTargetSchema = z.object({
@@ -67,6 +72,8 @@ const userTargetSchema = z.object({
   username: text,
   role: text,
   account_status: text,
+  avatar_path: text,
+  avatar_preset: text,
 });
 
 const reviewTargetSchema = z.object({
@@ -88,6 +95,8 @@ const messageTargetSchema = z.object({
   conversation_id: text,
   sender_id: text,
   sender_name: text,
+  sender_avatar_path: text,
+  sender_avatar_preset: text,
   body: text,
   created_at: text,
 });
@@ -137,10 +146,15 @@ const supportCaseDetailSchema = z.object({
       email: text,
       role: text,
       account_status: text,
+      avatar_path: text,
+      avatar_preset: text,
     })
     .nullable()
     .optional(),
-  assignee: z.object({ id: z.string(), name: text }).nullable().optional(),
+  assignee: z
+    .object({ id: z.string(), name: text, avatar_path: text, avatar_preset: text })
+    .nullable()
+    .optional(),
   target: z
     .object({
       type: text,

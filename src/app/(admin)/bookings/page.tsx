@@ -22,7 +22,7 @@ export default async function BookingsPage({
   const access = await requireRoutePermission("/bookings");
   const filters = parseBookingFilters(await searchParams);
   const supabase = await createSupabaseServerClient();
-  const result = await loadBookingList(supabase, filters);
+  const result = await loadBookingList(supabase, access, filters);
 
   return (
     <div className="flex flex-col gap-6">
@@ -43,6 +43,7 @@ export default async function BookingsPage({
         <>
           <BookingTable
             rows={result.rows}
+            avatars={result.avatars}
             filtered={hasBookingFilters(filters) || filters.page > 1}
             usersVisible={can(access.permissions, "users.read")}
             trainersVisible={can(access.permissions, "applications.read")}
