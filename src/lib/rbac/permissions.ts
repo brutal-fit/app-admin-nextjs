@@ -46,7 +46,7 @@ export const PERMISSIONS = [
     name: "View users",
     routes: ["/users", "/users/[id]"],
     apis: [],
-    components: ["user-search"],
+    components: ["user-search", "user-enrolments"],
   },
   {
     key: "users.manage",
@@ -179,6 +179,11 @@ export const PERMISSIONS = [
       "catalogue-item-dialog",
       "delete-catalogue-item-dialog",
       "setting-form",
+      "programmes-section",
+      "programme-plan-list",
+      "programme-plan-sheet",
+      "programme-day-list",
+      "programme-day-editor",
     ],
   },
   {

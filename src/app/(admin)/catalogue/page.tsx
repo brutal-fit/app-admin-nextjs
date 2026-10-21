@@ -4,6 +4,13 @@ import { loadCatalogue } from "@/features/catalogue/api";
 import { AreaLists } from "@/features/catalogue/components/area-lists";
 import { CatalogueItemDialog } from "@/features/catalogue/components/catalogue-item-dialog";
 import { CatalogueList } from "@/features/catalogue/components/catalogue-list";
+import { loadProgrammes } from "@/features/programmes/api";
+import { ProgrammesSection } from "@/features/programmes/components/programmes-section";
+import {
+  isProgrammesView,
+  parseProgrammeSelection,
+  programmesHref,
+} from "@/features/programmes/schemas";
 import {
   CATALOGUE_KINDS,
   CATALOGUE_KIND_HINTS,
@@ -20,9 +27,15 @@ export default async function CataloguePage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   await requireRoutePermission("/catalogue");
-  const kind = parseCatalogueKind((await searchParams).kind);
+  const params = await searchParams;
+  const kind = parseCatalogueKind(params.kind);
+  const programmesView = isProgrammesView(params);
+  const selection = parseProgrammeSelection(params);
   const supabase = await createSupabaseServerClient();
-  const result = await loadCatalogue(supabase);
+  const [result, programmes] = await Promise.all([
+    loadCatalogue(supabase),
+    programmesView ? loadProgrammes(supabase, selection) : Promise.resolve(null),
+  ]);
   const labels = CATALOGUE_KIND_LABELS[kind];
 
   return (
@@ -30,20 +43,30 @@ export default async function CataloguePage({
       <PageHeader
         eyebrow="Catalogue"
         title="Catalogue"
-        description="The lists the app offers. Active items show in the app in this order; inactive ones stay for the records that use them."
+        description="The lists and programmes the app offers. Active items show in the app in this order; inactive ones stay for the records that use them."
       />
       <FilterChips
         label="Catalogue lists"
-        chips={CATALOGUE_KINDS.map((value) => ({
-          id: value,
-          label: result.ok
-            ? `${CATALOGUE_KIND_LABELS[value].plural} (${result.byKind[value].length})`
-            : CATALOGUE_KIND_LABELS[value].plural,
-          active: value === kind,
-          href: catalogueHref(value),
-        }))}
+        chips={[
+          ...CATALOGUE_KINDS.map((value) => ({
+            id: value,
+            label: result.ok
+              ? `${CATALOGUE_KIND_LABELS[value].plural} (${result.byKind[value].length})`
+              : CATALOGUE_KIND_LABELS[value].plural,
+            active: !programmesView && value === kind,
+            href: catalogueHref(value),
+          })),
+          {
+            id: "programmes",
+            label: programmes?.ok ? `Programmes (${programmes.plans.length})` : "Programmes",
+            active: programmesView,
+            href: programmesHref(),
+          },
+        ]}
       />
-      {!result.ok ? (
+      {programmes ? (
+        <ProgrammesSection result={programmes} selection={selection} />
+      ) : !result.ok ? (
         <p role="alert" className="text-sm text-destructive">
           {result.error}
         </p>

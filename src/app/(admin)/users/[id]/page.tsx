@@ -6,7 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { AccountStatusControl } from "@/features/users/components/account-status-control";
 import { GrantTrainerAccess } from "@/features/users/components/grant-trainer-access";
 import { PasswordResetButton } from "@/features/users/components/password-reset-button";
+import { loadEnrolments } from "@/features/programmes/api";
 import { UserAuditList } from "@/features/users/components/user-audit-list";
+import { UserEnrolments } from "@/features/users/components/user-enrolments";
 import { UserOverview } from "@/features/users/components/user-overview";
 import { UserPrivacyRequests } from "@/features/users/components/user-privacy-requests";
 import { UserRolesPanel, type AssignedRole } from "@/features/users/components/user-roles-panel";
@@ -46,12 +48,25 @@ async function loadUser(userId: string) {
   }
 }
 
+// Settles on its own: a failed read shows in its section, not over the whole page.
+async function loadUserEnrolments(userId: string): ReturnType<typeof loadEnrolments> {
+  try {
+    const supabase = await createSupabaseServerClient();
+    return await loadEnrolments(supabase, userId);
+  } catch (error) {
+    return { ok: false, error: toAppError(error).message };
+  }
+}
+
 const BACK = { href: "/users", label: "Back to users" };
 
 export default async function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const access = await requireRoutePermission("/users/[id]");
   const { id } = await params;
-  const result = await loadUser(id);
+  const [result, enrolments] = await Promise.all([
+    loadUser(id),
+    loadUserEnrolments(id),
+  ]);
 
   if (!result.ok) {
     return (
@@ -137,6 +152,13 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
       </section>
 
       <UserOverview detail={detail} permissions={access.permissions} />
+
+      <UserEnrolments
+        userId={detail.id}
+        rows={enrolments.ok ? enrolments.rows : []}
+        error={enrolments.ok ? null : enrolments.error}
+        permissions={access.permissions}
+      />
 
       <section aria-labelledby="user-roles" className="flex max-w-2xl flex-col gap-4">
         <h2 id="user-roles" className="text-lg font-semibold">

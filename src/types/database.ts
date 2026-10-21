@@ -2,7 +2,8 @@
  * HAND-WRITTEN placeholder types for the RBAC schema (backend task 05, approved 2026-10-19)
  * plus the existing tables this panel reads (trainer applications, documents, availability,
  * trainer profiles, services, bookings, booking locations, support cases, catalogue, platform
- * settings, announcements) and the admin functions up to 20261019000700. Replace this whole
+ * settings, announcements, programme days and items, trainer listings) and the admin functions
+ * up to 20261021124448 that the panel calls. Replace this whole
  * file with
  * the generated version once the migration is applied:
  *
@@ -407,6 +408,55 @@ export type CatalogueItemRow = {
   updated_at: string;
 };
 
+/** public.programme_plans levels (20261021124448_programmes.sql). */
+export type ProgrammeLevel = "beginner" | "regular" | "advanced";
+export type ProgrammeStage =
+  | "enrolled"
+  | "trainer_assigned"
+  | "assessment_booked"
+  | "active"
+  | "completed"
+  | "cancelled";
+export type ProgrammeItemKind = "workout" | "nutrition" | "habit" | "rest" | "call";
+
+/**
+ * public.programme_days: readable by every signed-in account (plan content is not personal);
+ * written only through admin_upsert_programme_day.
+ */
+export type ProgrammeDayRow = {
+  id: string;
+  plan_id: string;
+  day_number: number;
+  title: string;
+  built_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** public.programme_items: readable like programme_days; written with its day. */
+export type ProgrammeItemRow = {
+  id: string;
+  day_id: string;
+  kind: ProgrammeItemKind;
+  title: string;
+  detail: string;
+  minutes: number | null;
+  figure_key: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+/**
+ * public.trainer_listings (owner-run view of listed trainers, readable when signed in). Only
+ * the columns the panel reads are listed.
+ */
+export type TrainerListingRow = {
+  trainer_id: string;
+  display_name: string | null;
+  modes: SessionMode[];
+};
+
 /** public.platform_settings: readable by everyone; written only through admin_set_setting. */
 export type PlatformSettingRow = {
   key: string;
@@ -566,10 +616,26 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      programme_days: {
+        Row: ProgrammeDayRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      programme_items: {
+        Row: ProgrammeItemRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: {
       trainer_rating_summaries: {
         Row: TrainerRatingSummaryRow;
+        Relationships: [];
+      };
+      trainer_listings: {
+        Row: TrainerListingRow;
         Relationships: [];
       };
     };
@@ -838,6 +904,31 @@ export type Database = {
         Args: { p_segment: Json; p_title: string; p_body: string; p_route?: string | null };
         Returns: Json;
       };
+      /**
+       * Programme functions (20261021124448_programmes.sql); each reply is jsonb, validated
+       * with Zod in src/lib/db/programmes.ts. Plans and days need catalogue.manage.
+       */
+      admin_list_programme_plans: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      admin_upsert_programme_plan: {
+        Args: { p: Json };
+        Returns: Json;
+      };
+      admin_upsert_programme_day: {
+        Args: { p: Json };
+        Returns: Json;
+      };
+      admin_set_plan_active: {
+        Args: { p_plan: string; p_active: boolean };
+        Returns: Json;
+      };
+      /** Enrolments where the user is the client or the trainer; needs users.read. */
+      admin_list_enrolments: {
+        Args: { p_user: string };
+        Returns: Json;
+      };
     };
     Enums: {
       user_role: UserRole;
@@ -852,6 +943,8 @@ export type Database = {
       booking_status: BookingStatus;
       payment_status: PaymentStatus;
       privacy_request_kind: PrivacyRequestKind;
+      programme_stage: ProgrammeStage;
+      programme_item_kind: ProgrammeItemKind;
     };
     CompositeTypes: { [_ in never]: never };
   };
