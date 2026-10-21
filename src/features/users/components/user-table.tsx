@@ -8,14 +8,30 @@ import { DataTable, type DataTableColumn } from "@/components/data-table/data-ta
 import { StatusPulse } from "@/components/motion/status-pulse";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { describePhone } from "@/features/users/format";
 import type { UserAvatarMap } from "@/lib/db/avatars";
+import type { UserPhoneMap } from "@/lib/db/phones";
 import type { AdminUserRow } from "@/types/database";
 
 function statusTone(status: AdminUserRow["account_status"]): string {
   return status === "active" ? "border-success text-success" : "border-destructive text-destructive";
 }
 
-const columns = (avatars: UserAvatarMap): DataTableColumn<AdminUserRow>[] => [
+// Missing id: the batch call has not answered or failed. Null: the user has no phone.
+function PhoneCell({ phone }: { phone: string | null | undefined }) {
+  if (phone === undefined) return <span className="text-muted-foreground">Not loaded</span>;
+  if (phone === null) return <span className="text-muted-foreground">No phone</span>;
+  const display = describePhone(phone);
+  if (!display.masked) return <span className="whitespace-nowrap tabular-nums">{display.text}</span>;
+  return (
+    <span className="whitespace-nowrap tabular-nums">
+      <span aria-hidden="true">{display.text}</span>
+      <span className="sr-only">{display.label}</span>
+    </span>
+  );
+}
+
+const columns = (avatars: UserAvatarMap, phones: UserPhoneMap): DataTableColumn<AdminUserRow>[] => [
   {
     id: "name",
     header: "Name",
@@ -37,6 +53,12 @@ const columns = (avatars: UserAvatarMap): DataTableColumn<AdminUserRow>[] => [
     header: "Email",
     sortValue: (user) => user.email ?? null,
     cell: (user) => user.email ?? "No email",
+  },
+  {
+    id: "phone",
+    header: "Phone",
+    sortValue: (user) => phones[user.id] ?? null,
+    cell: (user) => <PhoneCell phone={phones[user.id]} />,
   },
   {
     id: "platform",
@@ -89,14 +111,17 @@ const columns = (avatars: UserAvatarMap): DataTableColumn<AdminUserRow>[] => [
 export function UserTable({
   users,
   avatars = {},
+  phones = {},
   loading = false,
   toolbar,
   countLabel,
-  emptyDescription = "Try a different name or email.",
+  emptyDescription = "Try a different name, email or phone.",
 }: {
   users: AdminUserRow[];
   /** Avatars by user id from admin_user_avatars; a missing id shows initials. */
   avatars?: UserAvatarMap;
+  /** Phones by user id from admin_list_user_phones, masked by the server without users.manage. */
+  phones?: UserPhoneMap;
   loading?: boolean;
   toolbar?: ReactNode;
   countLabel?: (count: number) => string;
@@ -105,7 +130,7 @@ export function UserTable({
   return (
     <DataTable
       rows={users}
-      columns={columns(avatars)}
+      columns={columns(avatars, phones)}
       rowKey={(user) => user.id}
       caption="Users"
       loading={loading}

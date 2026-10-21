@@ -737,6 +737,15 @@ export type Database = {
         Args: { p_user_ids: string[] };
         Returns: Json;
       };
+      /**
+       * jsonb object keyed by user id: the phone or null (20261021171917); masked to the last
+       * four digits unless the caller holds users.manage; needs users.read, BRVAL above 200 ids.
+       * Validated with Zod in src/lib/db/phones.ts.
+       */
+      admin_list_user_phones: {
+        Args: { p_user_ids: string[] };
+        Returns: Json;
+      };
       /** jsonb { id, account_status, previous_status }; needs users.suspend. */
       admin_set_account_status: {
         Args: { p_user: string; p_status: AccountStatus; p_reason: string };

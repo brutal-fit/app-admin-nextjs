@@ -59,6 +59,8 @@ const userDetailSchema = z.object({
   full_name: text,
   email: text,
   username: text,
+  // The full phone (E.164) since 20261021171917; optional so an older reply still parses.
+  phone: text,
   platform_role: z.enum(["client", "trainer"]).nullable().optional(),
   account_status: z.enum(ACCOUNT_STATUS_VALUES),
   // Since 20261021104634; optional so an older reply still parses.

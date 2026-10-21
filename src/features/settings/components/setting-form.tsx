@@ -4,11 +4,20 @@ import { useState, useTransition, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateTime } from "@/features/applications/format";
 import { setSettingAction } from "@/features/settings/actions";
 import type { SettingEntry } from "@/features/settings/api";
 import {
+  COACH_MODEL_LABELS,
+  COACH_MODELS,
   POLICY_COPY_LABELS,
   POLICY_COPY_MAX,
   POLICY_COPY_PARTS,
@@ -16,6 +25,7 @@ import {
   parseIntegerText,
   setSettingSchema,
   storedSettingValue,
+  type CoachModel,
   type PolicyCopyPart,
   type SetSettingInput,
 } from "@/features/settings/schemas";
@@ -25,7 +35,9 @@ type Draft =
   | { input: "integer"; text: string }
   | { input: "integer_list"; text: string }
   | { input: "policy_copy"; parts: Record<PolicyCopyPart, string> }
-  | { input: "phone"; text: string };
+  | { input: "phone"; text: string }
+  // Empty until a model is chosen when the stored value is missing or unknown.
+  | { input: "coach_model"; model: string };
 
 function initialDraft(entry: SettingEntry): Draft {
   const { key, input } = entry.definition;
@@ -49,6 +61,10 @@ function initialDraft(entry: SettingEntry): Draft {
       const value = storedSettingValue("support.emergency_number", entry.value);
       return { input, text: value ?? "" };
     }
+    case "coach_model": {
+      const value = storedSettingValue("coach.model", entry.value);
+      return { input, model: value ?? "" };
+    }
   }
 }
 
@@ -67,6 +83,9 @@ function toInput(key: SettingEntry["definition"]["key"], draft: Draft): SetSetti
       return key === "booking.policy_copy" ? { key, value: draft.parts } : null;
     case "phone":
       return key === "support.emergency_number" ? { key, value: draft.text } : null;
+    case "coach_model":
+      // The schema names a blank or unknown model; the cast only reaches it.
+      return key === "coach.model" ? { key, value: draft.model as CoachModel } : null;
   }
 }
 
@@ -137,6 +156,26 @@ export function SettingForm({ entry }: { entry: SettingEntry }) {
               />
             </div>
           ))
+        ) : draft.input === "coach_model" ? (
+          <div className="flex flex-col gap-2">
+            <Label htmlFor={`${base}-value`}>{definition.label}</Label>
+            <Select
+              value={draft.model}
+              onValueChange={(model) => setDraft({ input: "coach_model", model })}
+              disabled={pending}
+            >
+              <SelectTrigger id={`${base}-value`} className="w-full sm:w-72" aria-describedby={describedBy}>
+                <SelectValue placeholder="Choose a model" />
+              </SelectTrigger>
+              <SelectContent>
+                {COACH_MODELS.map((model) => (
+                  <SelectItem key={model} value={model}>
+                    {COACH_MODEL_LABELS[model]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         ) : (
           <div className="flex flex-col gap-2">
             <Label htmlFor={`${base}-value`}>
@@ -157,6 +196,7 @@ export function SettingForm({ entry }: { entry: SettingEntry }) {
 
       <div className="flex flex-col gap-1 text-xs text-muted-foreground">
         <p id={`${base}-rule`}>{definition.rule}</p>
+        {definition.note ? <p>{definition.note}</p> : null}
         {entry.value === null ? (
           <p>Not set yet: the app uses its built-in default until this is saved.</p>
         ) : unknownShape ? (

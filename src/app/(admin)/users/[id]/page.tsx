@@ -11,7 +11,12 @@ import { UserEnrolments } from "@/features/users/components/user-enrolments";
 import { UserOverview } from "@/features/users/components/user-overview";
 import { UserPrivacyRequests } from "@/features/users/components/user-privacy-requests";
 import { UserRolesPanel, type AssignedRole } from "@/features/users/components/user-roles-panel";
-import { accountStatusTone, missingPermissionMessage, suspendBlockedReason } from "@/features/users/format";
+import {
+  accountStatusTone,
+  describePhone,
+  missingPermissionMessage,
+  suspendBlockedReason,
+} from "@/features/users/format";
 import { listRoles, listUserRoleGrants } from "@/lib/db/rbac";
 import { getUserDetail } from "@/lib/db/users";
 import { can } from "@/lib/rbac/can";
@@ -98,6 +103,8 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
         <div className="flex max-w-xl items-start gap-4 rounded-xl border bg-card p-4 shadow-tile">
           <Avatar name={name} avatar={toAvatarRef(detail.avatar_path, detail.avatar_preset)} size="lg" />
           <dl className="grid min-w-0 flex-1 grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm">
+          <dt className="text-muted-foreground">Phone</dt>
+          <dd className="tabular-nums">{detail.phone ? describePhone(detail.phone).text : "No phone"}</dd>
           <dt className="text-muted-foreground">Email</dt>
           <dd>{detail.email ?? "No email"}</dd>
           <dt className="text-muted-foreground">Username</dt>

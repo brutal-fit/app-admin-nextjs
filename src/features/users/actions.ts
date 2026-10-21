@@ -2,6 +2,7 @@
 
 import { refresh } from "next/cache";
 import { listUserAvatars, type UserAvatarMap } from "@/lib/db/avatars";
+import { listUserPhones, type UserPhoneMap } from "@/lib/db/phones";
 import { assignRole, listUsers, revokeRole, setPlatformRole } from "@/lib/db/rbac";
 import { processPrivacyRequest, setAccountStatus } from "@/lib/db/users";
 import { runAction } from "@/server/run-action";
@@ -11,6 +12,7 @@ import {
   processPrivacyRequestSchema,
   setAccountStatusSchema,
   userAvatarsSchema,
+  userPhonesSchema,
   userRoleSchema,
 } from "@/features/users/schemas";
 import type { ActionResult } from "@/types/action-result";
@@ -26,6 +28,13 @@ export async function listUsersAction(input: unknown): Promise<ActionResult<Admi
 export async function userAvatarsAction(input: unknown): Promise<ActionResult<UserAvatarMap>> {
   return runAction(userAvatarsSchema, input, "users.read", (data, { supabase }) =>
     listUserAvatars(supabase, data.ids),
+  );
+}
+
+/** Phones for the rows a search returned, masked by the server without users.manage. */
+export async function userPhonesAction(input: unknown): Promise<ActionResult<UserPhoneMap>> {
+  return runAction(userPhonesSchema, input, "users.read", (data, { supabase }) =>
+    listUserPhones(supabase, data.ids),
   );
 }
 

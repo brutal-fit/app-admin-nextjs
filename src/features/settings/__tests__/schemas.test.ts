@@ -53,6 +53,15 @@ describe("setSettingSchema", () => {
     expect(check("call me")).toBe(false);
   });
 
+  it("accepts only the three coach models", () => {
+    const check = (value: unknown) => setSettingSchema.safeParse({ key: "coach.model", value }).success;
+    expect(check("claude-haiku-5-5")).toBe(true);
+    expect(check("claude-sonnet-5-5")).toBe(true);
+    expect(check("claude-opus-5-5")).toBe(true);
+    expect(check("claude-haiku")).toBe(false);
+    expect(check("")).toBe(false);
+  });
+
   it("rejects an unknown key", () => {
     expect(setSettingSchema.safeParse({ key: "other.key", value: 1 }).success).toBe(false);
   });

@@ -15,12 +15,22 @@ export const MAX_RATE_MIN = 1;
 export const MAX_RATE_MAX = 100000;
 export const EMERGENCY_NUMBER_PATTERN = /^\+?[0-9][0-9 -]{1,19}$/;
 
+/** The models admin_set_setting accepts for coach.model, cheapest first. */
+export const COACH_MODELS = ["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"] as const;
+export type CoachModel = (typeof COACH_MODELS)[number];
+export const COACH_MODEL_LABELS: Record<CoachModel, string> = {
+  "claude-haiku-5-5": "Claude Haiku 5.5",
+  "claude-sonnet-5-5": "Claude Sonnet 5.5",
+  "claude-opus-5-5": "Claude Opus 5.5",
+};
+
 export const SETTING_KEYS = [
   "booking.cancellation_window_hours",
   "booking.session_durations",
   "booking.policy_copy",
   "trainer.max_rate_inr",
   "support.emergency_number",
+  "coach.model",
 ] as const;
 
 export type SettingKey = (typeof SETTING_KEYS)[number];
@@ -29,8 +39,11 @@ export function isSettingKey(value: string): value is SettingKey {
   return (SETTING_KEYS as readonly string[]).includes(value);
 }
 
-/** How a setting is edited: one whole number, a list of them, the policy lines, or text. */
-export type SettingInput = "integer" | "integer_list" | "policy_copy" | "phone";
+/**
+ * How a setting is edited: one whole number, a list of them, the policy lines, text, or one
+ * of the coach models.
+ */
+export type SettingInput = "integer" | "integer_list" | "policy_copy" | "phone" | "coach_model";
 
 export const POLICY_COPY_PARTS = ["home", "online", "cancellation"] as const;
 export type PolicyCopyPart = (typeof POLICY_COPY_PARTS)[number];
@@ -82,6 +95,7 @@ export const SETTING_VALUE_SCHEMAS = {
       EMERGENCY_NUMBER_PATTERN,
       "Use 2 to 20 digits, spaces or dashes, with an optional + at the start.",
     ),
+  "coach.model": z.enum(COACH_MODELS, { error: "Choose one of the three models." }),
 } as const satisfies Record<SettingKey, z.ZodType>;
 
 export type SettingValue<K extends SettingKey> = z.output<(typeof SETTING_VALUE_SCHEMAS)[K]>;
@@ -95,6 +109,8 @@ export type SettingDefinition = {
   /** The rule in words, under the field. */
   rule: string;
   unit?: string;
+  /** Guidance shown under the rule. */
+  note?: string;
 };
 
 export const SETTING_DEFINITIONS: readonly SettingDefinition[] = [
@@ -136,6 +152,14 @@ export const SETTING_DEFINITIONS: readonly SettingDefinition[] = [
     description: "Emergency number shown on safety screens.",
     rule: "2 to 20 digits, spaces or dashes, with an optional + at the start.",
   },
+  {
+    key: "coach.model",
+    label: "Coach model",
+    input: "coach_model",
+    description: "Claude model for the AI coach.",
+    rule: "One of Claude Haiku 5.5, Claude Sonnet 5.5 or Claude Opus 5.5.",
+    note: "Haiku for testing and development; Sonnet for launch.",
+  },
 ];
 
 export const setSettingSchema = z.discriminatedUnion("key", [
@@ -158,6 +182,10 @@ export const setSettingSchema = z.discriminatedUnion("key", [
   z.object({
     key: z.literal("support.emergency_number"),
     value: SETTING_VALUE_SCHEMAS["support.emergency_number"],
+  }),
+  z.object({
+    key: z.literal("coach.model"),
+    value: SETTING_VALUE_SCHEMAS["coach.model"],
   }),
 ]);
 

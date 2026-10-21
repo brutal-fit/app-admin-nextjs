@@ -5,10 +5,11 @@ import { Search } from "@/components/icons";
 import { FilterChips } from "@/components/data-table/filter-chips";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { listUsersAction, userAvatarsAction } from "@/features/users/actions";
+import { listUsersAction, userAvatarsAction, userPhonesAction } from "@/features/users/actions";
 import { UserTable } from "@/features/users/components/user-table";
 import { USER_PAGE_SIZE, USER_FILTERS, type UserFilter } from "@/features/users/schemas";
 import type { UserAvatarMap } from "@/lib/db/avatars";
+import type { UserPhoneMap } from "@/lib/db/phones";
 import type { AdminUserRow } from "@/types/database";
 
 const DEBOUNCE_MS = 300;
@@ -44,6 +45,7 @@ function matches(user: AdminUserRow, filter: UserFilter, joinedSince: string): b
 export function UserSearch({
   initialUsers,
   initialAvatars = {},
+  initialPhones = {},
   initialFilters = [],
   joinedSince,
   pageSize = USER_PAGE_SIZE,
@@ -51,6 +53,8 @@ export function UserSearch({
   initialUsers: AdminUserRow[];
   /** Avatars the server loaded for initialUsers; rows without one show initials. */
   initialAvatars?: UserAvatarMap;
+  /** Phones the server loaded for initialUsers (masked without users.manage). */
+  initialPhones?: UserPhoneMap;
   initialFilters?: UserFilter[];
   /** ISO timestamp seven days before the server render, for "Joined last 7 days". */
   joinedSince: string;
@@ -59,6 +63,7 @@ export function UserSearch({
 }) {
   const [users, setUsers] = useState(initialUsers);
   const [avatars, setAvatars] = useState<UserAvatarMap>(initialAvatars);
+  const [phones, setPhones] = useState<UserPhoneMap>(initialPhones);
   const [loadedLimit, setLoadedLimit] = useState(pageSize);
   const [filters, setFilters] = useState<UserFilter[]>(initialFilters);
   const [error, setError] = useState<string | null>(null);
@@ -82,6 +87,7 @@ export function UserSearch({
         setUsers(result.data);
         setLoadedLimit(USER_PAGE_SIZE);
         loadAvatars(result.data);
+        loadPhones(result.data);
       });
     }, DEBOUNCE_MS);
   }
@@ -92,6 +98,15 @@ export function UserSearch({
     if (missing.length === 0) return;
     void userAvatarsAction({ ids: missing }).then((result) => {
       if (result.ok) setAvatars((current) => ({ ...current, ...result.data }));
+    });
+  }
+
+  // Phones for rows not seen yet; a failure leaves "Not loaded" on those rows.
+  function loadPhones(rows: AdminUserRow[]) {
+    const missing = rows.map((user) => user.id).filter((id) => !(id in phones));
+    if (missing.length === 0) return;
+    void userPhonesAction({ ids: missing }).then((result) => {
+      if (result.ok) setPhones((current) => ({ ...current, ...result.data }));
     });
   }
 
@@ -120,7 +135,7 @@ export function UserSearch({
           <Input
             id="user-search"
             type="search"
-            placeholder="Name or email"
+            placeholder="Name, email or phone"
             autoComplete="off"
             className="pl-9"
             data-shortcut-search=""
@@ -147,6 +162,7 @@ export function UserSearch({
       <UserTable
         users={shown}
         avatars={avatars}
+        phones={phones}
         loading={pending}
         countLabel={(count) => {
           const noun = count === 1 ? "user" : "users";
@@ -156,7 +172,7 @@ export function UserSearch({
         emptyDescription={
           filters.length > 0
             ? "No loaded user matches these filters. Clear a filter or search for someone."
-            : "Try a different name or email."
+            : "Try a different name, email or phone."
         }
       />
     </div>

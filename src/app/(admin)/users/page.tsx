@@ -4,6 +4,7 @@ import { CreateUserDialog } from "@/features/users/components/create-user-dialog
 import { UserSearch } from "@/features/users/components/user-search";
 import { USER_MAX_PAGE, USER_PAGE_SIZE, parseUserFilters } from "@/features/users/schemas";
 import { listUserAvatarsOrEmpty } from "@/lib/db/avatars";
+import { listUserPhonesOrEmpty } from "@/lib/db/phones";
 import { listRoles, listUsers } from "@/lib/db/rbac";
 import { requireRoutePermission } from "@/lib/rbac/require-permission";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -27,15 +28,12 @@ export default async function UsersPage({
     listUsers(supabase, { query: "", limit: pageSize, offset: 0 }),
     listRoles(supabase),
   ]);
-  // One batch call for the rows shown; a failure only costs the avatars.
-  const avatars =
-    users.status === "fulfilled"
-      ? await listUserAvatarsOrEmpty(
-          supabase,
-          access.permissions,
-          users.value.map((user) => user.id),
-        )
-      : {};
+  // One batch call each for the rows shown; a failure only costs the avatars or the phones.
+  const ids = users.status === "fulfilled" ? users.value.map((user) => user.id) : [];
+  const [avatars, phones] = await Promise.all([
+    listUserAvatarsOrEmpty(supabase, access.permissions, ids),
+    listUserPhonesOrEmpty(supabase, access.permissions, ids),
+  ]);
   const assignable =
     roles.status === "fulfilled"
       ? roles.value.map((role) => ({ id: role.id, name: role.name, key: role.key }))
@@ -61,6 +59,7 @@ export default async function UsersPage({
         <UserSearch
           initialUsers={users.value}
           initialAvatars={avatars}
+          initialPhones={phones}
           initialFilters={initialFilters}
           joinedSince={daysAgoIso(7)}
           pageSize={pageSize}

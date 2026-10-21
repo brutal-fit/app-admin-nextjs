@@ -30,6 +30,9 @@ export const userRoleSchema = z.object({ userId, roleId });
 /** The ids a search result shows; admin_user_avatars takes at most 200. */
 export const userAvatarsSchema = z.object({ ids: z.array(userId).max(200) });
 
+/** The ids a search result shows; admin_list_user_phones takes at most 200. */
+export const userPhonesSchema = z.object({ ids: z.array(userId).max(200) });
+
 // Only the trainer grant exists in the panel: it lets an admin also use the app as a trainer.
 export const grantTrainerAccessSchema = z.object({ userId });
 

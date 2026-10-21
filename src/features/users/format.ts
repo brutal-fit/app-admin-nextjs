@@ -110,3 +110,21 @@ export function describeUserAuditEntry(entry: UserAuditEntry): string {
       return entry.action.replace(/[._]/g, " ");
   }
 }
+
+/** How a phone from the server reads on screen and to a screen reader. */
+export type PhoneDisplay = { text: string; label: string; masked: boolean };
+
+/**
+ * Formats a phone as the server sent it. A full Indian number reads "+91 90000 00001"; a masked
+ * one (users.read without users.manage) keeps the server's stars and is announced by its last
+ * four digits, since the panel never sees or guesses the rest.
+ */
+export function describePhone(phone: string): PhoneDisplay {
+  if (phone.includes("*")) {
+    const last = phone.replace(/\D/g, "").slice(-4);
+    return { text: phone, label: `Phone ending in ${last}`, masked: true };
+  }
+  const indian = /^\+91([6-9]\d{4})(\d{5})$/.exec(phone);
+  const text = indian ? `+91 ${indian[1]} ${indian[2]}` : phone;
+  return { text, label: text, masked: false };
+}

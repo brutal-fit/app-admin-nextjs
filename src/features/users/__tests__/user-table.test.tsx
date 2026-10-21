@@ -41,4 +41,28 @@ describe("UserTable", () => {
     expect(screen.getByText("No email")).toBeTruthy();
     expect(screen.getByText("suspended")).toBeTruthy();
   });
+
+  it("shows a full phone formatted (users.manage)", () => {
+    render(<UserTable users={[user({})]} phones={{ u1: "+919000000001" }} />);
+    expect(screen.getByText("+91 90000 00001")).toBeTruthy();
+    expect(screen.queryByText(/ending in/)).toBeNull();
+  });
+
+  it("shows a masked phone as the server sent it and announces the last four", () => {
+    render(<UserTable users={[user({})]} phones={{ u1: "*********0001" }} />);
+    expect(screen.getByText("*********0001").getAttribute("aria-hidden")).toBe("true");
+    expect(screen.getByText("Phone ending in 0001")).toBeTruthy();
+    expect(screen.queryByText("+91 90000 00001")).toBeNull();
+  });
+
+  it("tells no phone apart from a phone not loaded", () => {
+    render(
+      <UserTable
+        users={[user({ id: "u1" }), user({ id: "u2", full_name: "Ravi Kumar" })]}
+        phones={{ u1: null }}
+      />,
+    );
+    expect(screen.getByText("No phone")).toBeTruthy();
+    expect(screen.getByText("Not loaded")).toBeTruthy();
+  });
 });
