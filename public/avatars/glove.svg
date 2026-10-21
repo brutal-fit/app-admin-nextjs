@@ -1,7 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-<circle cx="64" cy="64" r="64" fill="#1E6460"/>
-<circle cx="64" cy="64" r="46" fill="#287A74"/>
-<g fill="none" stroke="#F3EEEA" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-<g transform="translate(3 0)"><path d="M46 78V52q0-18 18-18h6q18 0 18 18v14q0 12-12 12z"/><path d="M46 58Q34 58 34 67Q34 76 46 76M58 48q10-4 20 0"/><rect x="48" y="78" width="36" height="16" rx="3"/></g>
-</g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><defs><clipPath id="k6"><circle cx="64" cy="64" r="64"/></clipPath><linearGradient id="g6" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#48443C"/><stop offset="1" stop-color="#33302B"/></linearGradient></defs><circle cx="64" cy="64" r="64" fill="url(#g6)"/><g clip-path="url(#k6)"><path d="M18 128 Q22 90 64 88 Q106 90 110 128 Z" fill="#1E1B22"/><path d="M50 90 L64 104 L78 90 L74 88 L64 98 L54 88 Z" fill="#E0A98A" opacity="0.9"/><rect x="56" y="70" width="16" height="20" rx="6" fill="#4E2E1E"/><circle cx="64" cy="56" r="24" fill="#4E2E1E"/><path d="M42 44 Q64 36 86 44 L86 49 Q64 41 42 49 Z" fill="#F3EEEA" opacity="0.9"/><circle cx="55" cy="56" r="2.4" fill="#1A1515"/><circle cx="73" cy="56" r="2.4" fill="#1A1515"/><path d="M57 66 Q64 71 71 66" stroke="#1A1515" stroke-width="2.4" fill="none" stroke-linecap="round"/><g fill="none" stroke="#1A1515" stroke-width="2"><circle cx="55" cy="56" r="7"/><circle cx="73" cy="56" r="7"/><path d="M62 56 L66 56"/></g><circle cx="64" cy="64" r="62.5" fill="none" stroke="#F3EEEA" stroke-opacity="0.12" stroke-width="3"/></g></svg>

@@ -1,7 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-<circle cx="64" cy="64" r="64" fill="#4F3F8C"/>
-<circle cx="64" cy="64" r="46" fill="#604FA3"/>
-<g fill="none" stroke="#F3EEEA" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-<circle cx="64" cy="70" r="26"/><path d="M58 34H70M64 34V44M84 46l5-5M64 70L73 56"/>
-</g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><defs><clipPath id="k8"><circle cx="64" cy="64" r="64"/></clipPath><linearGradient id="g8" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4F413B"/><stop offset="1" stop-color="#3A2F2B"/></linearGradient></defs><circle cx="64" cy="64" r="64" fill="url(#g8)"/><g clip-path="url(#k8)"><path d="M18 128 Q22 90 64 88 Q106 90 110 128 Z" fill="#3B3542"/><rect x="56" y="70" width="16" height="20" rx="6" fill="#E0A98A"/><path d="M30 100 Q28 40 64 22 Q100 40 98 100 Z" fill="#1C1412"/><circle cx="64" cy="56" r="20" fill="#E0A98A"/><circle cx="55" cy="56" r="2.4" fill="#1A1515"/><circle cx="73" cy="56" r="2.4" fill="#1A1515"/><path d="M57 66 Q64 71 71 66" stroke="#1A1515" stroke-width="2.4" fill="none" stroke-linecap="round"/><circle cx="64" cy="64" r="62.5" fill="none" stroke="#F3EEEA" stroke-opacity="0.12" stroke-width="3"/></g></svg>
