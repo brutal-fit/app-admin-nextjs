@@ -15,7 +15,8 @@ Prioritised. Status: todo, in progress, done (with date and handoff dir or commi
 | AD-06 | Vitest suite: 133 tests in 23 files (registry, helpers, errors, screens, dashboard, palette, shortcuts) | done 2026-10-19 |
 | AD-08 | `dev` branch created and tracked | done 2026-10-19 |
 | AD-14 | Round 2 leftovers (`../memory/notes/adminops-round2-panel.md`): `/trainers` and `/trainers/[id]` read approved `trainer_applications`, so a `trainers.read`-only role (support) sees the missing-permission notice or "No application on record"; needs a backend read of approved trainers for `trainers.read` (schema change, owner approval). `account.password_reset` is missing from `AUDIT_ACTIONS` and the describers, so it shows raw. | todo |
-| AD-19 | Phone identity in the panel: password reset removed, masked phone, create user by phone (`../memory/.claude/handoffs/2026-10-21-phone-auth/task-03.md`) | in progress |
+| AD-20 | Phone on the users list and user 360, masked except the last four digits without `users.manage`, search by digits: needs `admin_list_users`, `admin_get_user_detail` and the search to return `profiles.phone` (backend, `../memory/.claude/handoffs/2026-10-21-phone-auth/task-04.md`) | todo |
+| AD-19 | Phone identity in the panel: password reset removed, masked phone, create user by phone (`../memory/.claude/handoffs/2026-10-21-phone-auth/task-03.md`) | done 2026-10-21 (`f19128f`) except the phone on user pages: no admin read returns it (AD-20) |
 | AD-18 | Programme plans and day editor under the catalogue area; enrolments on user 360 (`../memory/.claude/handoffs/2026-10-21-programmes/task-03.md`) | done 2026-10-21 (`b63c57f`) |
 | AD-17 | Preset avatars in the panel's shared Avatar component (`../memory/.claude/handoffs/2026-10-21-avatars/task-03.md`) | done 2026-10-21 (`bf35e58`) |
 | AD-16 | Booking timeline shows "Trainer arrived" (`../memory/.claude/handoffs/2026-10-20-live-location/task-03.md`) | done 2026-10-20 (`e1b1091`) |
