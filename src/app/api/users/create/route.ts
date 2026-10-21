@@ -11,9 +11,11 @@ function fail(status: number, error: AppErrorPayload) {
 }
 
 /**
- * Creates a confirmed auth account and assigns admin roles. The account is created with the
- * service role (Auth admin API); roles are assigned with the caller's own session so the
- * database checks users.manage again.
+ * Creates a confirmed auth account for a mobile number and assigns admin roles. Phone is the
+ * identity, so there is no email or password: the person signs in to the app with a code
+ * texted to that number. The account is created with the service role (Auth admin API), and
+ * the new-user trigger copies the phone to the profile; roles are assigned with the caller's
+ * own session so the database checks users.manage again.
  */
 export async function POST(request: Request) {
   try {
@@ -44,9 +46,8 @@ export async function POST(request: Request) {
   try {
     const service = createServiceClient();
     const { data, error } = await service.auth.admin.createUser({
-      email: input.email,
-      password: input.password,
-      email_confirm: true,
+      phone: input.phone,
+      phone_confirm: true,
       user_metadata: { full_name: input.fullName },
     });
     if (error) return fail(error.status === 422 ? 400 : 500, errorPayload(error));

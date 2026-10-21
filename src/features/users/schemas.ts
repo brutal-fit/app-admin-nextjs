@@ -33,12 +33,37 @@ export const userAvatarsSchema = z.object({ ids: z.array(userId).max(200) });
 // Only the trainer grant exists in the panel: it lets an admin also use the app as a trainer.
 export const grantTrainerAccessSchema = z.object({ userId });
 
+/** An Indian mobile number: ten digits starting 6 to 9, as the app's phone field accepts. */
+const INDIAN_MOBILE = /^[6-9][0-9]{9}$/;
+
+/**
+ * The ten national digits of a typed or pasted Indian mobile number ("+91 98741 63116",
+ * "098741-63116", "9874163116"), or null when it is not one. Mirrors the app's
+ * Formatters.mobileDigits, except that extra digits are refused instead of cut off.
+ */
+export function indianMobileDigits(raw: string): string | null {
+  const trimmed = raw.trim();
+  let digits = trimmed.replace(/\D/g, "");
+  if (trimmed.startsWith("+91") || (digits.length > 10 && digits.startsWith("91"))) {
+    digits = digits.slice(2);
+  } else if (digits.length > 10 && digits.startsWith("0")) {
+    digits = digits.slice(1);
+  }
+  return INDIAN_MOBILE.test(digits) ? digits : null;
+}
+
+// Phone is the identity (+91 only in this version); stored as E.164 "+91XXXXXXXXXX".
 export const createUserSchema = z.object({
-  email: z.string().trim().pipe(z.email("Enter a valid email address.")),
-  password: z
+  phone: z
     .string()
-    .min(8, "Password needs at least 8 characters.")
-    .max(72, "Password must be 72 characters or fewer."),
+    .transform((value, ctx) => {
+      const digits = indianMobileDigits(value);
+      if (digits === null) {
+        ctx.addIssue({ code: "custom", message: "Enter a 10-digit Indian mobile number." });
+        return z.NEVER;
+      }
+      return `+91${digits}`;
+    }),
   fullName: z.string().trim().min(1, "Enter the person's name.").max(120),
   roleIds: z.array(roleId).max(20),
 });
@@ -72,5 +97,3 @@ export const processPrivacyRequestSchema = z.object({
     .max(PRIVACY_NOTE_MAX, `Keep the note under ${PRIVACY_NOTE_MAX} characters.`)
     .transform((value) => (value === "" ? null : value)),
 });
-
-export const passwordResetSchema = z.object({ userId });

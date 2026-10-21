@@ -1,10 +1,9 @@
 /*
- * The accounts data layer: the only file in src/ that spells the user 360, account status,
- * privacy and password reset function names (20261019000400_adminops_support_accounts.sql,
+ * The accounts data layer: the only file in src/ that spells the user 360, account status
+ * and privacy function names (20261019000400_adminops_support_accounts.sql,
  * 20261019000800_adminops_round2.sql). Every call runs with the admin's own session; the
  * functions check the key themselves (users.read to read, users.suspend to change the status,
- * privacy.process to list and resolve requests, users.manage to note a reset) and fail
- * through private.fail. Every wrapper throws AppError (via toAppError) on failure.
+ * privacy.process to list and resolve requests) and fail through private.fail. Every wrapper throws AppError (via toAppError) on failure.
  * admin_get_user and its callers stay in rbac.ts, unchanged.
  */
 import { z } from "zod";
@@ -22,7 +21,6 @@ const RPC = {
   setStatus: "admin_set_account_status",
   processPrivacy: "admin_process_privacy_request",
   listPrivacy: "admin_list_privacy_requests",
-  notePasswordReset: "admin_note_password_reset",
 } as const;
 
 /** admin_list_privacy_requests returns at most this many rows per call. */
@@ -187,10 +185,4 @@ export async function listPrivacyRequests(
 export async function countPendingPrivacyRequests(client: AppSupabaseClient): Promise<number> {
   const { total } = await listPrivacyRequests(client, { status: "pending", kind: null, limit: 1, offset: 0 });
   return total;
-}
-
-/** Records in the audit log that the caller sent this account a password reset email. */
-export async function notePasswordReset(client: AppSupabaseClient, userId: string): Promise<void> {
-  const { error } = await client.rpc(RPC.notePasswordReset, { p_user: userId });
-  if (error) throw toAppError(error);
 }

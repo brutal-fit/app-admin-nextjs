@@ -24,7 +24,10 @@ type CreateUserResponse =
   | { ok: true; userId: string }
   | { ok: false; error: { message: string } };
 
-/** Creates an auth account through /api/users/create, which needs the service role key. */
+/**
+ * Creates an auth account for a mobile number through /api/users/create, which needs the
+ * service role key. Phone is the identity: no email or password is set here.
+ */
 export function CreateUserDialog({
   serviceRoleConfigured,
   roles,
@@ -61,8 +64,7 @@ export function CreateUserDialog({
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const parsed = createUserSchema.safeParse({
-      email: form.get("email"),
-      password: form.get("password"),
+      phone: form.get("phone"),
       fullName: form.get("fullName"),
       roleIds: form.getAll("roleIds"),
     });
@@ -107,7 +109,9 @@ export function CreateUserDialog({
         <DialogHeader>
           <DialogTitle>New user</DialogTitle>
           <DialogDescription>
-            Creates a confirmed account with this password. Share it privately.
+            Creates a confirmed account for this mobile number. The person signs in to the app with
+            a code texted to it. Signing in to this panel needs an email and password, which this
+            form does not set.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
@@ -116,29 +120,25 @@ export function CreateUserDialog({
             <Input id="new-user-name" name="fullName" required disabled={pending} />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="new-user-email">Email</Label>
-            <Input
-              id="new-user-email"
-              name="email"
-              type="email"
-              autoComplete="off"
-              required
-              disabled={pending}
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="new-user-password">Temporary password</Label>
-            <Input
-              id="new-user-password"
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              required
-              disabled={pending}
-              aria-describedby="new-user-password-hint"
-            />
-            <p id="new-user-password-hint" className="text-xs text-muted-foreground">
-              At least 8 characters.
+            <Label htmlFor="new-user-phone">Mobile number</Label>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground" aria-hidden="true">
+                +91
+              </span>
+              <Input
+                id="new-user-phone"
+                name="phone"
+                type="tel"
+                inputMode="numeric"
+                autoComplete="off"
+                maxLength={16}
+                required
+                disabled={pending}
+                aria-describedby="new-user-phone-hint"
+              />
+            </div>
+            <p id="new-user-phone-hint" className="text-xs text-muted-foreground">
+              Ten digits, Indian numbers only.
             </p>
           </div>
           <fieldset className="flex flex-col gap-2">

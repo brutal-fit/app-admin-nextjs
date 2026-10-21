@@ -91,6 +91,9 @@ export function toAppError(error: unknown): AppError {
     if (error.code === "invalid_credentials") {
       return new AppError("AUTH", "Email or password is incorrect.");
     }
+    if (error.code === "phone_exists") {
+      return new AppError("BRVAL", "An account with this phone number already exists.");
+    }
     if (error.code === "email_exists" || error.code === "user_already_exists") {
       return new AppError("BRVAL", "An account with this email already exists.");
     }

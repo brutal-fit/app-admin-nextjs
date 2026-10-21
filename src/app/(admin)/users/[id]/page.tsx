@@ -5,7 +5,6 @@ import { Can } from "@/components/rbac/can";
 import { Badge } from "@/components/ui/badge";
 import { AccountStatusControl } from "@/features/users/components/account-status-control";
 import { GrantTrainerAccess } from "@/features/users/components/grant-trainer-access";
-import { PasswordResetButton } from "@/features/users/components/password-reset-button";
 import { loadEnrolments } from "@/features/programmes/api";
 import { UserAuditList } from "@/features/users/components/user-audit-list";
 import { UserEnrolments } from "@/features/users/components/user-enrolments";
@@ -19,8 +18,7 @@ import { can } from "@/lib/rbac/can";
 import { requireRoutePermission } from "@/lib/rbac/require-permission";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { toAvatarRef } from "@/lib/utils/avatar";
-import { SERVICE_ROLE_MISSING_MESSAGE, toAppError } from "@/lib/supabase/errors";
-import { isServiceRoleConfigured } from "@/server/service-client";
+import { toAppError } from "@/lib/supabase/errors";
 
 async function loadUser(userId: string) {
   try {
@@ -82,12 +80,6 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
   const { detail, assigned, available } = result;
   const name = detail.full_name?.trim() || detail.username || "Unnamed";
   const canSuspend = can(access.permissions, "users.suspend");
-  const canManage = can(access.permissions, "users.manage");
-  const resetBlocked = !isServiceRoleConfigured()
-    ? SERVICE_ROLE_MISSING_MESSAGE
-    : detail.email
-      ? null
-      : "This account has no email address.";
 
   return (
     <div className="flex flex-col gap-8">
@@ -139,13 +131,6 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
           ) : (
             <p className="text-sm text-muted-foreground">
               {missingPermissionMessage("users.suspend", "Suspending or reinstating")}
-            </p>
-          )}
-          {canManage ? (
-            <PasswordResetButton userId={detail.id} email={detail.email ?? null} disabledReason={resetBlocked} />
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              {missingPermissionMessage("users.manage", "Sending a password reset email")}
             </p>
           )}
         </div>

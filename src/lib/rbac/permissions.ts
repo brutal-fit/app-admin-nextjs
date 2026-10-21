@@ -53,8 +53,8 @@ export const PERMISSIONS = [
     group: "users",
     name: "Manage users and roles",
     routes: [],
-    apis: ["/api/users/create", "/api/users/password-reset"],
-    components: ["user-roles-panel", "grant-trainer-access", "create-user-dialog", "password-reset-button"],
+    apis: ["/api/users/create"],
+    components: ["user-roles-panel", "grant-trainer-access", "create-user-dialog"],
   },
   {
     key: "users.suspend",
