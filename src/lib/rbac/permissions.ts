@@ -113,6 +113,46 @@ export const PERMISSIONS = [
     components: ["trainer-table", "trainer-summary"],
   },
   {
+    key: "gyms.read",
+    group: "applications",
+    name: "View gyms",
+    routes: ["/gyms", "/gyms/[id]"],
+    apis: [],
+    components: ["gym-table", "gym-filters", "gym-profile-card", "gym-hours-list", "gym-staff-table", "gym-booking-list"],
+  },
+  {
+    key: "gyms.manage",
+    group: "applications",
+    name: "Create, verify and list gyms; set gym service prices",
+    routes: [],
+    apis: [],
+    components: ["create-gym-dialog", "gym-verify-dialog", "gym-listing-toggle", "gym-service-price-dialog"],
+  },
+  {
+    // A marker: gym functions check the caller's gym_staff manager row, not this key. The
+    // gym area also needs that row (src/lib/rbac/gym-scope.ts).
+    key: "gym.self",
+    group: "applications",
+    name: "Gym manager area",
+    routes: ["/my-gym", "/my-gym/requests", "/my-gym/staff", "/my-gym/bookings"],
+    apis: [],
+    components: [
+      "gym-switcher",
+      "my-gym-profile-form",
+      "my-gym-photos",
+      "my-gym-services-editor",
+      "my-gym-hours-editor",
+      "submit-gym-button",
+      "request-list",
+      "allot-trainer-form",
+      "decline-request-dialog",
+      "staff-list",
+      "invite-staff-dialog",
+      "remove-staff-button",
+      "my-gym-booking-list",
+    ],
+  },
+  {
     key: "support.read",
     group: "support",
     name: "View support cases",
@@ -256,6 +296,7 @@ const NAV_LABELS: Readonly<Record<string, string>> = {
   "/privacy": "Privacy",
   "/applications": "Applications",
   "/trainers": "Trainers",
+  "/gyms": "Gyms",
   "/support": "Support",
   "/bookings": "Bookings",
   "/reviews": "Reviews",
@@ -264,6 +305,15 @@ const NAV_LABELS: Readonly<Record<string, string>> = {
   "/announcements": "Announcements",
   "/audit": "Audit log",
   "/analytics": "Analytics",
+  "/my-gym": "Overview",
+  "/my-gym/requests": "Requests",
+  "/my-gym/staff": "Staff",
+  "/my-gym/bookings": "Bookings",
+};
+
+/** Nav items under these permission keys render in their own sidebar section. */
+const NAV_SECTIONS: Readonly<Partial<Record<string, string>>> = {
+  "gym.self": "My gym",
 };
 
 export type RouteRule = { kind: "open" } | { kind: "permission"; key: PermissionKey };
@@ -308,20 +358,64 @@ export function apiPermission(pathname: string): PermissionKey | null {
   return null;
 }
 
-export type NavItem = { href: string; label: string; permission: PermissionKey | null };
+export type NavItem = {
+  href: string;
+  label: string;
+  permission: PermissionKey | null;
+  /** Sidebar section heading; absent for the main list. */
+  section?: string;
+};
 
-/** Top-level nav entries in registry order; the dashboard always comes first. */
+/** Nav entries in registry order; the dashboard always comes first. */
 export function navItems(): NavItem[] {
   const items: NavItem[] = [{ href: "/dashboard", label: "Dashboard", permission: null }];
   for (const permission of PERMISSIONS) {
+    const section = NAV_SECTIONS[permission.key];
     for (const route of permission.routes) {
       const label = NAV_LABELS[route];
       if (label && !items.some((item) => item.href === route)) {
-        items.push({ href: route, label, permission: permission.key });
+        items.push(
+          section
+            ? { href: route, label, permission: permission.key, section }
+            : { href: route, label, permission: permission.key },
+        );
       }
     }
   }
   return items;
+}
+
+/** The marker key of the gym manager area. */
+export const GYM_AREA_PERMISSION = "gym.self" satisfies PermissionKey;
+
+/**
+ * True when the session holds the gym manager marker and nothing else: a gym manager, whose
+ * panel is the gym area only (no dashboard, users, audit or settings).
+ */
+export function isGymOnlySession(permissions: readonly string[]): boolean {
+  return permissions.length > 0 && permissions.every((key) => key === GYM_AREA_PERMISSION);
+}
+
+/** Where a session lands after sign-in and on "/". */
+export function homeHref(permissions: readonly string[]): string {
+  return isGymOnlySession(permissions) ? "/my-gym" : "/dashboard";
+}
+
+/**
+ * The nav this session sees: items whose key it holds, the gym area only when it also manages
+ * a gym (an active gym_staff manager row), and no dashboard for a gym-only session.
+ */
+export function sessionNavItems(
+  permissions: readonly string[],
+  { managesGym }: { managesGym: boolean },
+): NavItem[] {
+  const gymOnly = isGymOnlySession(permissions);
+  return navItems().filter((item) => {
+    if (item.permission === null) return !gymOnly;
+    if (!permissions.includes(item.permission)) return false;
+    if (item.permission === GYM_AREA_PERMISSION) return managesGym;
+    return true;
+  });
 }
 
 export function permissionsInGroup(group: PermissionGroupKey): readonly Permission[] {

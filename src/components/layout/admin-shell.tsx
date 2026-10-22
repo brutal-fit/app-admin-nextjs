@@ -9,7 +9,8 @@ import { ShortcutSheet } from "@/components/layout/shortcut-sheet";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { Topbar } from "@/components/layout/topbar";
 import { can } from "@/lib/rbac/can";
-import { navItems, routePermission } from "@/lib/rbac/permissions";
+import { getGymScope } from "@/lib/rbac/gym-scope";
+import { homeHref, routePermission, sessionNavItems } from "@/lib/rbac/permissions";
 import { getSessionAccess } from "@/lib/rbac/session";
 import { PATHNAME_HEADER } from "@/lib/utils/request-headers";
 import { isServiceRoleConfigured } from "@/server/service-client";
@@ -47,9 +48,12 @@ export async function AdminShell({ children }: { children: ReactNode }) {
     }
   }
 
-  const items = navItems()
-    .filter((item) => item.permission === null || can(access.permissions, item.permission))
-    .map(({ href, label }) => ({ href, label }));
+  // The gym area shows only for a session that manages a gym right now.
+  const managesGym = (await getGymScope()).status === "ok";
+  const items = sessionNavItems(access.permissions, { managesGym }).map(({ href, label, section }) =>
+    section ? { href, label, section } : { href, label },
+  );
+  const home = homeHref(access.permissions);
 
   return (
     <SessionStoreProvider access={access}>
@@ -62,7 +66,7 @@ export async function AdminShell({ children }: { children: ReactNode }) {
       <div className="flex min-h-dvh">
         <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col gap-8 border-r border-border bg-card p-4 md:flex">
           <Link
-            href="/dashboard"
+            href={home}
             className="focus-ring rounded-sm px-3 text-lg font-extrabold tracking-widest"
           >
             BRUTAL <span className="font-medium text-muted-foreground">admin</span>
@@ -80,7 +84,7 @@ export async function AdminShell({ children }: { children: ReactNode }) {
           </main>
         </div>
       </div>
-      <CommandPalette serviceRoleConfigured={isServiceRoleConfigured()} />
+      <CommandPalette serviceRoleConfigured={isServiceRoleConfigured()} managesGym={managesGym} />
       <ShortcutSheet />
       <GlobalShortcuts allowedHrefs={items.map((item) => item.href)} />
     </SessionStoreProvider>

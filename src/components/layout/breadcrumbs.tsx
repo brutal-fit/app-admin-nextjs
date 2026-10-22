@@ -10,6 +10,8 @@ const SECTION_LABELS: Record<string, { label: string; detail: string }> = {
   users: { label: "Users", detail: "User" },
   roles: { label: "Roles", detail: "Role" },
   trainers: { label: "Trainers", detail: "Trainer" },
+  gyms: { label: "Gyms", detail: "Gym" },
+  "my-gym": { label: "My gym", detail: "Details" },
   support: { label: "Support", detail: "Case" },
   bookings: { label: "Bookings", detail: "Booking" },
   reviews: { label: "Reviews", detail: "Review" },
@@ -21,6 +23,11 @@ const SECTION_LABELS: Record<string, { label: string; detail: string }> = {
   forbidden: { label: "No access", detail: "Details" },
 };
 
+// Named sub-pages, shown by name instead of the section's detail label.
+const SUBPAGE_LABELS: Record<string, Record<string, string>> = {
+  "my-gym": { requests: "Requests", staff: "Staff", bookings: "Bookings" },
+};
+
 /** Where the page sits: Admin / Section / Detail, from the path alone (no data lookups). */
 export function Breadcrumbs() {
   const pathname = usePathname();
@@ -28,7 +35,7 @@ export function Breadcrumbs() {
   const known = section ? SECTION_LABELS[section] : undefined;
   const crumbs: { label: string; href: string | null }[] = [{ label: "Admin", href: "/dashboard" }];
   if (known && section) crumbs.push({ label: known.label, href: id ? `/${section}` : null });
-  if (known && id) crumbs.push({ label: known.detail, href: null });
+  if (known && id) crumbs.push({ label: (section && SUBPAGE_LABELS[section]?.[id]) ?? known.detail, href: null });
 
   return (
     <nav aria-label="Breadcrumb" className="min-w-0">

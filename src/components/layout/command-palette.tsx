@@ -14,6 +14,8 @@ import {
   Flag,
   Grid,
   HelpCircle,
+  Home,
+  Inbox,
   LifeBuoy,
   List,
   Plus,
@@ -46,7 +48,7 @@ import { EMPTY_REVIEW_FILTERS, reviewListHref } from "@/features/reviews/schemas
 import { EMPTY_SUPPORT_FILTERS, supportListHref } from "@/features/support/schemas";
 import { listUsersAction } from "@/features/users/actions";
 import { can } from "@/lib/rbac/can";
-import { navItems, type PermissionKey } from "@/lib/rbac/permissions";
+import { sessionNavItems, type PermissionKey } from "@/lib/rbac/permissions";
 import { SERVICE_ROLE_MISSING_MESSAGE } from "@/lib/supabase/errors";
 import { istDateString } from "@/lib/utils/time";
 import { useCommandStore } from "@/stores/command-store";
@@ -64,6 +66,11 @@ const PAGE_ICONS: Record<string, Icon> = {
   "/privacy": Archive,
   "/roles": Shield,
   "/trainers": UserCheck,
+  "/gyms": Home,
+  "/my-gym": Home,
+  "/my-gym/requests": Inbox,
+  "/my-gym/staff": Users,
+  "/my-gym/bookings": Calendar,
   "/support": LifeBuoy,
   "/bookings": Calendar,
   "/reviews": Star,
@@ -157,7 +164,14 @@ type UserSearch =
  * (admin_list_users, debounced) and quick actions, each gated by the same permission keys
  * as the pages behind them. Items the session lacks are not listed at all.
  */
-export function CommandPalette({ serviceRoleConfigured }: { serviceRoleConfigured: boolean }) {
+export function CommandPalette({
+  serviceRoleConfigured,
+  managesGym = false,
+}: {
+  serviceRoleConfigured: boolean;
+  /** True when the session manages a gym (decided on the server), which opens the gym area. */
+  managesGym?: boolean;
+}) {
   const router = useRouter();
   const apple = useApplePlatform();
   const open = useCommandStore((state) => state.paletteOpen);
@@ -171,8 +185,8 @@ export function CommandPalette({ serviceRoleConfigured }: { serviceRoleConfigure
   const allowed = (key: PermissionKey) => can(permissions, key);
   const canSearchUsers = allowed("users.read");
   const pages = useMemo(
-    () => navItems().filter((item) => item.permission === null || can(permissions, item.permission)),
-    [permissions],
+    () => sessionNavItems(permissions ?? [], { managesGym }),
+    [permissions, managesGym],
   );
   const jumps = JUMPS.filter((jump) => can(permissions, jump.permission));
 
@@ -236,10 +250,11 @@ export function CommandPalette({ serviceRoleConfigured }: { serviceRoleConfigure
             <CommandGroup heading="Pages">
               {pages.map((page) => {
                 const PageIcon = PAGE_ICONS[page.href] ?? ArrowRight;
+                const label = page.section ? `${page.section}: ${page.label}` : page.label;
                 return (
-                  <CommandItem key={page.href} value={`page ${page.label}`} onSelect={() => go(page.href)}>
+                  <CommandItem key={page.href} value={`page ${label}`} onSelect={() => go(page.href)}>
                     <PageIcon size={16} aria-hidden="true" />
-                    {page.label}
+                    {label}
                     {PAGE_KEYS[page.href] ? <CommandShortcut>{PAGE_KEYS[page.href]}</CommandShortcut> : null}
                   </CommandItem>
                 );

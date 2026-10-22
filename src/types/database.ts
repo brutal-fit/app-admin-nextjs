@@ -2,8 +2,8 @@
  * HAND-WRITTEN placeholder types for the RBAC schema (backend task 05, approved 2026-10-19)
  * plus the existing tables this panel reads (trainer applications, documents, availability,
  * trainer profiles, services, bookings, booking locations, support cases, catalogue, platform
- * settings, announcements, programme days and items, trainer listings) and the admin functions
- * up to 20261022021036 that the panel calls. Replace this whole
+ * settings, announcements, programme days and items, trainer listings, gyms, gym staff, booking
+ * details) and the admin and gym functions up to 20261022035524 that the panel calls. Replace this whole
  * file with
  * the generated version once the migration is applied:
  *
@@ -292,6 +292,96 @@ export type AdminTeamRow = {
   name: string | null;
   email: string | null;
   roles: string[];
+};
+
+/** gyms.status (20261022035524_gyms.sql): draft -> submitted -> verified -> listed, or suspended. */
+export type GymStatus = "draft" | "submitted" | "verified" | "listed" | "suspended";
+export type GymStaffRole = "manager" | "trainer";
+export type GymStaffStatus = "invited" | "active" | "removed";
+
+/** The columns of public.gyms the panel reads straight from the table (gyms_select_staff). */
+export type GymRow = {
+  id: string;
+  name: string;
+  status: GymStatus;
+};
+
+/**
+ * public.gym_staff (20261022035524). A manager reads every row of their gym
+ * (gym_staff_select_manager); anyone reads their own rows (gym_staff_select_own). No name
+ * column: the table keys invites by phone.
+ */
+export type GymStaffRow = {
+  id: string;
+  gym_id: string;
+  user_id: string | null;
+  phone: string;
+  role: GymStaffRole;
+  status: GymStaffStatus;
+  invited_at: string;
+  joined_at: string | null;
+  removed_at: string | null;
+};
+
+/** One row of admin_list_gyms (20261022035524), needs gyms.read. */
+export type AdminGymListRow = {
+  id: string;
+  slug: string;
+  name: string;
+  area: string;
+  city: string;
+  status: GymStatus;
+  listed: boolean;
+  rating: number | null;
+  review_count: number;
+  bookings_count: number;
+  /** Active services still waiting for a platform price. */
+  pending_prices: number;
+  staff_count: number;
+  submitted_at: string | null;
+  created_at: string;
+  updated_at: string;
+  /** Rows matching the filters across every page (bigint). */
+  total_count: number;
+};
+
+/** One row of gym_list_requests (20261022035524): the caller must manage the gym. */
+export type GymRequestRow = {
+  booking_id: string;
+  status: BookingStatus;
+  client_id: string;
+  client_first_name: string;
+  gym_service_id: string | null;
+  service_title: string;
+  mode: SessionMode;
+  start_at: string;
+  end_at: string;
+  duration_minutes: number;
+  price_snapshot_inr: number;
+  requested_start_at: string | null;
+  trainer_id: string | null;
+  trainer_name: string | null;
+  created_at: string;
+};
+
+/**
+ * The columns of public.booking_details (security invoker) the gym pages read. A gym
+ * manager sees the gym's bookings through bookings_select_gym_manager; names come from
+ * private.display_name, which admits the gym's clients and staff for its managers.
+ */
+export type BookingDetailsRow = {
+  id: string;
+  client_id: string;
+  trainer_id: string | null;
+  service_title: string;
+  mode: SessionMode;
+  start_at: string;
+  end_at: string;
+  price_snapshot_inr: number;
+  status: BookingStatus;
+  client_name: string | null;
+  trainer_name: string | null;
+  gym_id: string | null;
 };
 
 /** One row of admin_list_reviews (20261019000500), needs reviews.moderate. */
@@ -641,6 +731,18 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      gyms: {
+        Row: GymRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      gym_staff: {
+        Row: GymStaffRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: {
       trainer_rating_summaries: {
@@ -649,6 +751,10 @@ export type Database = {
       };
       trainer_listings: {
         Row: TrainerListingRow;
+        Relationships: [];
+      };
+      booking_details: {
+        Row: BookingDetailsRow;
         Relationships: [];
       };
     };
@@ -964,6 +1070,91 @@ export type Database = {
         Args: { p_user: string };
         Returns: Json;
       };
+      /*
+       * Gyms (20261022035524_gyms.sql). jsonb replies are validated with Zod in
+       * src/lib/db/gyms.ts. admin_* need gyms.read (reads) or gyms.manage (writes); gym_*
+       * need an active manager row for the gym (BRPRM otherwise), not a permission key.
+       */
+      admin_list_gyms: {
+        Args: {
+          p_status?: GymStatus | null;
+          p_search?: string | null;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: AdminGymListRow[];
+      };
+      admin_get_gym: {
+        Args: { p_gym: string };
+        Returns: Json;
+      };
+      admin_create_gym: {
+        Args: { p: Json };
+        Returns: Json;
+      };
+      admin_verify_gym: {
+        Args: { p_gym: string; p_decision: "verified" | "rejected" | "suspended"; p_note?: string | null };
+        Returns: Json;
+      };
+      admin_set_gym_listed: {
+        Args: { p_gym: string; p_listed: boolean };
+        Returns: Json;
+      };
+      /** Null withdraws the platform price. */
+      admin_set_gym_service_price: {
+        Args: { p_service: string; p_price_inr: number | null };
+        Returns: Json;
+      };
+      /** Manage mode (status, asks, every service) for the gym's managers and gyms.read. */
+      get_gym: {
+        Args: { p_id: string };
+        Returns: Json;
+      };
+      /** Binds pending staff invites for the caller's phone; returns how many bound. */
+      bind_gym_invites: {
+        Args: Record<string, never>;
+        Returns: number;
+      };
+      gym_list_requests: {
+        Args: { p_gym: string };
+        Returns: GymRequestRow[];
+      };
+      gym_allot_trainer: {
+        Args: { p_booking: string; p_trainer_user: string };
+        Returns: Json;
+      };
+      gym_decline_request: {
+        Args: { p_booking: string; p_reason: string };
+        Returns: Json;
+      };
+      gym_reassign_trainer: {
+        Args: { p_booking: string; p_trainer_user: string };
+        Returns: Json;
+      };
+      gym_update_profile: {
+        Args: { p: Json };
+        Returns: Json;
+      };
+      gym_set_service: {
+        Args: { p: Json };
+        Returns: Json;
+      };
+      gym_set_hours: {
+        Args: { p: Json };
+        Returns: Json;
+      };
+      gym_invite_staff: {
+        Args: { p_gym: string; p_phone: string; p_role: GymStaffRole };
+        Returns: Json;
+      };
+      gym_remove_staff: {
+        Args: { p_staff: string };
+        Returns: Json;
+      };
+      gym_submit_for_review: {
+        Args: { p_gym: string };
+        Returns: Json;
+      };
     };
     Enums: {
       user_role: UserRole;
@@ -980,6 +1171,7 @@ export type Database = {
       privacy_request_kind: PrivacyRequestKind;
       programme_stage: ProgrammeStage;
       programme_item_kind: ProgrammeItemKind;
+      gym_status: GymStatus;
     };
     CompositeTypes: { [_ in never]: never };
   };

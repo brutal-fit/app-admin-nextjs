@@ -1,8 +1,10 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { bindGymInvites } from "@/lib/db/gyms";
 import { getMyAccess } from "@/lib/db/rbac";
 import { hasPanelAccess } from "@/lib/rbac/can";
+import { homeHref } from "@/lib/rbac/permissions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { AppError, NO_ADMIN_ROLE_MESSAGE, errorPayload } from "@/lib/supabase/errors";
 import { signInSchema } from "@/features/auth/schemas";
@@ -25,14 +27,25 @@ export async function signInAction(_previous: SignInState, formData: FormData): 
     return { ok: false, error: new AppError("BRVAL", message).toPayload() };
   }
 
+  let home = "/dashboard";
   try {
     const supabase = await createSupabaseServerClient();
     const { error } = await supabase.auth.signInWithPassword(parsed.data);
     if (error) return { ok: false, error: errorPayload(error) };
 
+    // An account that existed before its gym invite joins the gym (and gets the gym manager
+    // role) only through this call. Best effort: sign-in never fails on it.
+    try {
+      await bindGymInvites(supabase);
+    } catch {
+      // No invite to bind, or the gym schema is not installed; the access check decides.
+    }
+
     let allowed: boolean;
     try {
-      allowed = hasPanelAccess(await getMyAccess(supabase));
+      const access = await getMyAccess(supabase);
+      allowed = hasPanelAccess(access);
+      home = homeHref(access.permissions);
     } catch (accessError) {
       await supabase.auth.signOut();
       return { ok: false, error: errorPayload(accessError) };
@@ -45,7 +58,7 @@ export async function signInAction(_previous: SignInState, formData: FormData): 
     return { ok: false, error: errorPayload(error) };
   }
 
-  redirect("/dashboard");
+  redirect(home);
 }
 
 export async function signOutAction(): Promise<void> {

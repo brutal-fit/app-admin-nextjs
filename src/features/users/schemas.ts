@@ -68,6 +68,22 @@ export const createUserSchema = z.object({
       return `+91${digits}`;
     }),
   fullName: z.string().trim().min(1, "Enter the person's name.").max(120),
+  // Optional panel login: with an email the account also gets a temporary password, shown
+  // once, so the person (a gym manager, say) can sign in to this panel.
+  email: z
+    .string()
+    .trim()
+    .max(254, "That email is too long.")
+    .transform((value, ctx) => {
+      if (value === "") return null;
+      if (!z.email().safeParse(value).success) {
+        ctx.addIssue({ code: "custom", message: "Enter a valid email, or leave it empty." });
+        return z.NEVER;
+      }
+      return value.toLowerCase();
+    })
+    .optional()
+    .transform((value) => value ?? null),
   roleIds: z.array(roleId).max(20),
 });
 

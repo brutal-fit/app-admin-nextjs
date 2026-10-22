@@ -1,10 +1,12 @@
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { ActivityFeed } from "@/features/dashboard/components/activity-feed";
 import { ReviewQueue } from "@/features/dashboard/components/review-queue";
 import { SectionSkeleton } from "@/features/dashboard/components/section-skeleton";
 import { StatTiles } from "@/features/dashboard/components/stat-tiles";
 import { loadActivity, loadDashboardTiles, loadReviewQueue } from "@/features/dashboard/api";
+import { isGymOnlySession } from "@/lib/rbac/permissions";
 import { requireRoutePermission } from "@/lib/rbac/require-permission";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { currentTime, istHour } from "@/lib/utils/time";
@@ -34,6 +36,8 @@ function greeting(hour: number): string {
 
 export default async function DashboardPage() {
   const access = await requireRoutePermission("/dashboard");
+  // A gym manager's panel is the gym area; the ops dashboard is not theirs.
+  if (isGymOnlySession(access.permissions)) redirect("/my-gym");
   const firstName = access.fullName.trim().split(/\s+/)[0] ?? "";
 
   return (

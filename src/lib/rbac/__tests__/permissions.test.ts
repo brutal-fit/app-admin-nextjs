@@ -10,7 +10,8 @@ import {
   routePermission,
 } from "@/lib/rbac/permissions";
 
-// Mirrors the rows seeded by the rbac migrations 20261019000200 to 20261019000700.
+// Mirrors the rows seeded by the rbac migrations 20261019000200 to 20261019000700 and the
+// gym keys from 20261022035524_gyms.sql.
 const SEEDED: Record<string, string> = {
   "rbac.manage": "rbac",
   "users.read": "users",
@@ -35,6 +36,9 @@ const SEEDED: Record<string, string> = {
   "analytics.read": "audit",
   "catalogue.manage": "settings",
   "announcements.send": "settings",
+  "gyms.read": "applications",
+  "gyms.manage": "applications",
+  "gym.self": "applications",
 };
 
 const ADMIN_DIR = join(process.cwd(), "src", "app", "(admin)");
@@ -53,8 +57,8 @@ function adminRoutes(dir: string): string[] {
 }
 
 describe("permission registry", () => {
-  it("holds 23 keys", () => {
-    expect(PERMISSIONS).toHaveLength(23);
+  it("holds 26 keys", () => {
+    expect(PERMISSIONS).toHaveLength(26);
   });
 
   it("holds exactly the seeded permission keys", () => {
@@ -125,6 +129,11 @@ describe("navItems", () => {
       "/privacy",
       "/applications",
       "/trainers",
+      "/gyms",
+      "/my-gym",
+      "/my-gym/requests",
+      "/my-gym/staff",
+      "/my-gym/bookings",
       "/support",
       "/bookings",
       "/reviews",
