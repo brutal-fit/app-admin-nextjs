@@ -8,10 +8,11 @@ import {
   navItems,
   permissionsInGroup,
   routePermission,
+  sessionNavItems,
 } from "@/lib/rbac/permissions";
 
 // Mirrors the rows seeded by the rbac migrations 20261019000200 to 20261019000700 and the
-// gym keys from 20261022035524_gyms.sql.
+// gym keys from 20261022035524_gyms.sql and the payment keys from 20261022151245_payments.sql.
 const SEEDED: Record<string, string> = {
   "rbac.manage": "rbac",
   "users.read": "users",
@@ -39,6 +40,8 @@ const SEEDED: Record<string, string> = {
   "gyms.read": "applications",
   "gyms.manage": "applications",
   "gym.self": "applications",
+  "payments.read": "bookings",
+  "payments.manage": "bookings",
 };
 
 const ADMIN_DIR = join(process.cwd(), "src", "app", "(admin)");
@@ -57,8 +60,8 @@ function adminRoutes(dir: string): string[] {
 }
 
 describe("permission registry", () => {
-  it("holds 26 keys", () => {
-    expect(PERMISSIONS).toHaveLength(26);
+  it("holds 28 keys", () => {
+    expect(PERMISSIONS).toHaveLength(28);
   });
 
   it("holds exactly the seeded permission keys", () => {
@@ -136,6 +139,7 @@ describe("navItems", () => {
       "/my-gym/bookings",
       "/support",
       "/bookings",
+      "/payments",
       "/reviews",
       "/catalogue",
       "/settings",
@@ -166,5 +170,35 @@ describe("trainers, bookings and reviews routes", () => {
 describe("privacy route", () => {
   it("gates the queue on privacy.process", () => {
     expect(routePermission("/privacy")).toEqual({ kind: "permission", key: "privacy.process" });
+  });
+});
+
+describe("payments routes and nav", () => {
+  it("gates the list and detail on payments.read", () => {
+    expect(routePermission("/payments")).toEqual({ kind: "permission", key: "payments.read" });
+    expect(routePermission("/payments/abc")).toEqual({ kind: "permission", key: "payments.read" });
+  });
+
+  it("puts both payment keys in the bookings group", () => {
+    expect(permissionsInGroup("bookings").map((p) => p.key)).toEqual(
+      expect.arrayContaining(["payments.read", "payments.manage"]),
+    );
+  });
+
+  it("shows Payments under Bookings for a session holding payments.read", () => {
+    const items = sessionNavItems(["bookings.read", "payments.read"], { managesGym: false });
+    expect(items.map((item) => item.href)).toEqual(["/dashboard", "/bookings", "/payments"]);
+    expect(items.find((item) => item.href === "/payments")).toEqual({
+      href: "/payments",
+      label: "Payments",
+      permission: "payments.read",
+    });
+  });
+
+  it("hides Payments from a session without payments.read", () => {
+    for (const permissions of [["bookings.read"], ["bookings.read", "payments.manage"], []]) {
+      const hrefs = sessionNavItems(permissions, { managesGym: false }).map((item) => item.href);
+      expect(hrefs).not.toContain("/payments");
+    }
   });
 });

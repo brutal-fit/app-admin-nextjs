@@ -8,6 +8,8 @@ import { BookingTimeline } from "@/features/bookings/components/booking-timeline
 import { CancelBookingDialog } from "@/features/bookings/components/cancel-booking-dialog";
 import { ResolveDisputeDialog } from "@/features/bookings/components/resolve-dispute-dialog";
 import { loadBookingDetail } from "@/features/bookings/api";
+import { BookingPaymentCard } from "@/features/payments/components/booking-payment-card";
+import { loadBookingPayment } from "@/features/payments/api";
 import { bookingStatusTone, formatSessionRange } from "@/features/bookings/format";
 import { canResolveDispute, isCancellable } from "@/features/bookings/schemas";
 import { BOOKING_STATUS_LABELS, missingPermissionMessage } from "@/features/users/format";
@@ -35,6 +37,7 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
   }
 
   const { detail, address, gym } = result;
+  const payment = await loadBookingPayment(supabase, access, detail.booking.id);
   const { booking, dispute } = detail;
   const cancellable = isCancellable(booking.status);
   const resolvable = canResolveDispute(booking.status, booking.dispute_resolved_at);
@@ -64,6 +67,7 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
           permissions={access.permissions}
         />
         <div className="flex flex-col gap-6">
+          <BookingPaymentCard state={payment} permissions={access.permissions} />
           <BookingDisputeCard dispute={dispute} permissions={access.permissions} />
           <BookingAddressCard address={address} mode={booking.mode} hasAddress={detail.hasAddress} />
         </div>

@@ -3,7 +3,8 @@
  * plus the existing tables this panel reads (trainer applications, documents, availability,
  * trainer profiles, services, bookings, booking locations, support cases, catalogue, platform
  * settings, announcements, programme days and items, trainer listings, gyms, gym staff, booking
- * details) and the admin and gym functions up to 20261022035524 that the panel calls. Replace this whole
+ * details, payments) and the admin and gym functions up to 20261022035524 that the panel calls,
+ * plus the request and reply of the `refund` Edge Function (20261022151245). Replace this whole
  * file with
  * the generated version once the migration is applied:
  *
@@ -197,6 +198,59 @@ export type PaymentStatus =
   | "partially_refunded"
   | "refunded"
   | "disputed";
+
+/** public.payment_state (20261022151245_payments.sql): one Razorpay order and what became of it. */
+export type PaymentState =
+  | "created"
+  | "paid"
+  | "failed"
+  | "refund_pending"
+  | "refund_requested"
+  | "refunded"
+  | "refund_failed";
+
+/**
+ * public.payments (20261022151245_payments.sql). Admins read every row with payments.read
+ * (payments_select_admin); nobody writes it directly: the Edge Functions and the payment
+ * functions own every state change.
+ */
+export type PaymentRow = {
+  id: string;
+  booking_id: string;
+  provider: string;
+  order_id: string;
+  payment_id: string | null;
+  amount_inr: number;
+  currency: string;
+  state: PaymentState;
+  signature_verified: boolean;
+  refund_id: string | null;
+  refund_amount_inr: number | null;
+  refund_reason: string | null;
+  /** Refund calls Razorpay refused; the fifth turns the payment refund_failed. */
+  refund_attempts: number;
+  last_event_id: string | null;
+  /** The last Razorpay event or entity stored with the row. */
+  raw: Json | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/**
+ * Edge Function `refund` (app-be-supabase/supabase/functions/refund), called by an admin
+ * holding payments.manage with their own session JWT. The function reads only `payment_id`
+ * (payments.id); `reason` rides along for the day the function records it.
+ */
+export type RefundFunctionBody = { payment_id: string; reason: string };
+
+/**
+ * What `refund` answers: 200 with the refund id and state refund_requested; otherwise
+ * `{ code, message }` with `state` (and `attempts`) when the payment was found
+ * (409 BRVAL not refundable, 502 provider_error, 404 BRNTF, 403 BRPRM, 401, 500).
+ */
+export type RefundFunctionReply =
+  | { payment_id: string; refund_id: string; state: "refund_requested" }
+  | { code: string; message: string; state?: PaymentState; attempts?: number; refund_id?: string };
 
 /** bookings.cancelled_by (20261019000500); null on bookings cancelled before it existed. */
 export type CancelledBy = "client" | "trainer" | "admin";
@@ -684,6 +738,12 @@ export type Database = {
       };
       bookings: {
         Row: BookingRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      payments: {
+        Row: PaymentRow;
         Insert: never;
         Update: never;
         Relationships: [];
@@ -1187,6 +1247,7 @@ export type Database = {
       report_category: ReportCategory;
       booking_status: BookingStatus;
       payment_status: PaymentStatus;
+      payment_state: PaymentState;
       privacy_request_kind: PrivacyRequestKind;
       programme_stage: ProgrammeStage;
       programme_item_kind: ProgrammeItemKind;

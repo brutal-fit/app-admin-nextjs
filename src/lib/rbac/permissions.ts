@@ -201,6 +201,23 @@ export const PERMISSIONS = [
     components: ["cancel-booking-dialog", "resolve-dispute-dialog"],
   },
   {
+    key: "payments.read",
+    group: "bookings",
+    name: "View payments",
+    routes: ["/payments", "/payments/[id]"],
+    apis: [],
+    components: ["payment-table", "payment-filters", "payment-detail", "booking-payment-card"],
+  },
+  {
+    // The refund Edge Function checks this key itself (my_access) before calling Razorpay.
+    key: "payments.manage",
+    group: "bookings",
+    name: "Refund payments",
+    routes: [],
+    apis: [],
+    components: ["refund-payment-dialog"],
+  },
+  {
     key: "reviews.moderate",
     group: "reviews",
     name: "Hide or restore reviews",
@@ -299,6 +316,7 @@ const NAV_LABELS: Readonly<Record<string, string>> = {
   "/gyms": "Gyms",
   "/support": "Support",
   "/bookings": "Bookings",
+  "/payments": "Payments",
   "/reviews": "Reviews",
   "/catalogue": "Catalogue",
   "/settings": "Settings",

@@ -122,3 +122,40 @@ export function toAppError(error: unknown): AppError {
 export function errorPayload(error: unknown): AppErrorPayload {
   return toAppError(error).toPayload();
 }
+
+/** The `{ code, message }` body an Edge Function sends with a non-2xx status. */
+export type FunctionErrorBody = { code?: string; message?: string };
+
+// Edge Function codes that are not SQLSTATEs, with the words staff see.
+const FUNCTION_MESSAGES: Readonly<Record<string, { code: AppErrorCode; message: string }>> = {
+  unauthenticated: { code: "AUTH", message: "Your session has ended. Sign in again." },
+  config_missing: {
+    code: "CONFIG",
+    message: "Payments are not configured on the server yet. Ask an engineer to set the Razorpay secrets.",
+  },
+  provider_error: { code: "UNKNOWN", message: "Razorpay did not accept the request. Try again in a minute." },
+  store_error: {
+    code: "UNKNOWN",
+    message:
+      "Razorpay accepted the refund but the panel could not record it. The Razorpay webhook will settle it; check again in a few minutes.",
+  },
+  bad_request: { code: "BRVAL", message: "That request is not valid." },
+};
+
+/**
+ * An Edge Function's error reply as an AppError: the BR codes keep their meaning (and the
+ * server's words for BRVAL and BRNTF), the function's own codes get the messages above, and
+ * anything else falls back on the HTTP status.
+ */
+export function functionErrorToAppError(status: number, body: FunctionErrorBody | null): AppError {
+  const code = body?.code ?? "";
+  if (code === "BRVAL" || code === "BRPRM" || code === "BRNTF" || code === "BRSLT") {
+    return fromSqlState({ code, message: body?.message ?? "" });
+  }
+  const known = FUNCTION_MESSAGES[code];
+  if (known) return new AppError(known.code, known.message);
+  if (status === 401) return new AppError("AUTH", FUNCTION_MESSAGES.unauthenticated.message);
+  if (status === 403) return new AppError("BRPRM");
+  if (status === 404) return new AppError("NOT_INSTALLED", "The server function is not deployed yet.");
+  return new AppError("UNKNOWN");
+}
