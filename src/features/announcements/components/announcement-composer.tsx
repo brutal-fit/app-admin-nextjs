@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { estimateRecipientsAction, sendAnnouncementAction } from "@/features/announcements/actions";
-import type { CityChoice } from "@/features/announcements/api";
+import type { CityChoice, PushStatus } from "@/features/announcements/api";
 import {
   ANNOUNCEMENT_BODY_MAX,
   ANNOUNCEMENT_RECIPIENT_MAX,
@@ -77,6 +77,12 @@ function audienceSummary(audience: Audience, city: string, user: AdminUserRow | 
 
 const NO_RECIPIENTS = "No one matches this audience";
 
+/** Delivery follows the platform setting; there is no per-announcement choice. */
+export function pushInfoText(push: PushStatus): string {
+  if (!push.ok) return `Whether push is on could not be read: ${push.error}`;
+  return push.enabled ? "Also delivered as a push notification to phones." : "Push is off in Settings.";
+}
+
 function estimateText(estimate: RecipientEstimate): string {
   if (estimate.count === 0) return `${NO_RECIPIENTS}.`;
   if (estimate.count > ANNOUNCEMENT_RECIPIENT_MAX) {
@@ -89,19 +95,22 @@ function estimateText(estimate: RecipientEstimate): string {
  * Writes an in-app announcement and sends it through admin_send_notification. "Who receives
  * this" is the exact count from admin_count_recipients before sending (zero disables Send);
  * the confirmation repeats it, and the count shown after sending is the one the send returns.
- * Gated by announcements.send.
+ * The push line reflects push.enabled as read when the page loaded. Gated by announcements.send.
  */
 export function AnnouncementComposer({
   cities,
   citiesError,
   canSearchUsers,
   searchUsersReason,
+  push,
 }: {
   cities: readonly CityChoice[];
   citiesError: string | null;
   canSearchUsers: boolean;
   /** Why the one-person audience is unavailable; shown when canSearchUsers is false. */
   searchUsersReason: string;
+  /** push.enabled, read on the server when the page loaded. */
+  push: PushStatus;
 }) {
   const [audience, setAudience] = useState<Audience>("all");
   const [city, setCity] = useState(ANY_CITY);
@@ -406,6 +415,9 @@ export function AnnouncementComposer({
             </Select>
             <p className="text-xs text-muted-foreground">The app screen a tap on the notification opens.</p>
           </div>
+          <p className={push.ok ? "text-sm text-muted-foreground" : "text-sm text-destructive"}>
+            {pushInfoText(push)}
+          </p>
         </fieldset>
 
         {error ? (

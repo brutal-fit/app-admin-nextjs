@@ -20,6 +20,17 @@ export async function listSettings(client: AppSupabaseClient): Promise<PlatformS
   return data;
 }
 
+/** One setting's stored value, or null when the key has no row (or is hidden from the API). */
+export async function getSettingValue(client: AppSupabaseClient, key: string): Promise<Json | null> {
+  const { data, error } = await client
+    .from(TABLE.settings)
+    .select("value")
+    .eq("key", key)
+    .maybeSingle();
+  if (error) throw toAppError(error);
+  return data ? data.value : null;
+}
+
 /** BRVAL with the server's text on an unknown key or a value that fails the key's check. */
 export async function setSetting(client: AppSupabaseClient, key: string, value: Json): Promise<void> {
   const { error } = await client.rpc(RPC.set, { p_key: key, p_value: value });

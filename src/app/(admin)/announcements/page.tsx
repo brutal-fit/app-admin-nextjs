@@ -18,7 +18,7 @@ export default async function AnnouncementsPage() {
       <PageHeader
         eyebrow="Announcements"
         title="Announcements"
-        description="An in-app message to everyone, all clients, all trainers or trainers in one city, or one person. It lands in each inbox; there is no push yet."
+        description="An in-app message to everyone, all clients, all trainers or trainers in one city, or one person. It lands in each inbox, and on phones as a push notification while push is on in Settings."
       />
       <section aria-labelledby="announcement-new" className="flex flex-col gap-4">
         <h2 id="announcement-new" className="text-lg font-semibold">
@@ -29,6 +29,7 @@ export default async function AnnouncementsPage() {
           citiesError={result.cities.ok ? null : result.cities.error}
           canSearchUsers={can(access.permissions, "users.read")}
           searchUsersReason={missingPermissionMessage("users.read", "Sending to one person")}
+          push={result.push}
         />
       </section>
       <section aria-labelledby="announcement-history" className="flex flex-col gap-4">
