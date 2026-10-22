@@ -65,6 +65,21 @@ describe("setSettingSchema", () => {
   it("rejects an unknown key", () => {
     expect(setSettingSchema.safeParse({ key: "other.key", value: 1 }).success).toBe(false);
   });
+
+  it.each(["push.enabled", "payments.enabled"])("accepts only a boolean for %s", (key) => {
+    const check = (value: unknown) => setSettingSchema.safeParse({ key, value }).success;
+    expect(check(true)).toBe(true);
+    expect(check(false)).toBe(true);
+    expect(check("true")).toBe(false);
+    expect(check(1)).toBe(false);
+    expect(check(null)).toBe(false);
+  });
+
+  it("keeps the push and payment hook keys unsettable", () => {
+    for (const key of ["push.hook_secret", "push.hook_url", "payments.refund_hook_secret", "payments.refund_hook_url"]) {
+      expect(setSettingSchema.safeParse({ key, value: "x" }).success).toBe(false);
+    }
+  });
 });
 
 describe("text parsing", () => {

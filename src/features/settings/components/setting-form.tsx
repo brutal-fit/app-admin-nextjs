@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateTime } from "@/features/applications/format";
 import { setSettingAction } from "@/features/settings/actions";
@@ -18,6 +19,7 @@ import type { SettingEntry } from "@/features/settings/api";
 import {
   COACH_MODEL_LABELS,
   COACH_MODELS,
+  isBooleanSettingKey,
   POLICY_COPY_LABELS,
   POLICY_COPY_MAX,
   POLICY_COPY_PARTS,
@@ -37,7 +39,9 @@ type Draft =
   | { input: "policy_copy"; parts: Record<PolicyCopyPart, string> }
   | { input: "phone"; text: string }
   // Empty until a model is chosen when the stored value is missing or unknown.
-  | { input: "coach_model"; model: string };
+  | { input: "coach_model"; model: string }
+  // Off when the stored value is missing or not a boolean: the server reads it the same way.
+  | { input: "boolean"; checked: boolean };
 
 function initialDraft(entry: SettingEntry): Draft {
   const { key, input } = entry.definition;
@@ -65,6 +69,10 @@ function initialDraft(entry: SettingEntry): Draft {
       const value = storedSettingValue("coach.model", entry.value);
       return { input, model: value ?? "" };
     }
+    case "boolean": {
+      const value = isBooleanSettingKey(key) ? storedSettingValue(key, entry.value) : null;
+      return { input, checked: value === true };
+    }
   }
 }
 
@@ -86,6 +94,8 @@ function toInput(key: SettingEntry["definition"]["key"], draft: Draft): SetSetti
     case "coach_model":
       // The schema names a blank or unknown model; the cast only reaches it.
       return key === "coach.model" ? { key, value: draft.model as CoachModel } : null;
+    case "boolean":
+      return isBooleanSettingKey(key) ? { key, value: draft.checked } : null;
   }
 }
 
@@ -156,6 +166,19 @@ export function SettingForm({ entry }: { entry: SettingEntry }) {
               />
             </div>
           ))
+        ) : draft.input === "boolean" ? (
+          <div className="flex items-center gap-3">
+            <Switch
+              id={`${base}-value`}
+              checked={draft.checked}
+              onCheckedChange={(checked) => setDraft({ input: "boolean", checked })}
+              aria-describedby={describedBy}
+            />
+            <Label htmlFor={`${base}-value`}>{definition.label}</Label>
+            <span className="text-sm text-muted-foreground" aria-hidden="true">
+              {draft.checked ? "On" : "Off"}
+            </span>
+          </div>
         ) : draft.input === "coach_model" ? (
           <div className="flex flex-col gap-2">
             <Label htmlFor={`${base}-value`}>{definition.label}</Label>
@@ -198,7 +221,11 @@ export function SettingForm({ entry }: { entry: SettingEntry }) {
         <p id={`${base}-rule`}>{definition.rule}</p>
         {definition.note ? <p>{definition.note}</p> : null}
         {entry.value === null ? (
-          <p>Not set yet: the app uses its built-in default until this is saved.</p>
+          <p>
+            {definition.input === "boolean"
+              ? "Not set yet: off until this is saved."
+              : "Not set yet: the app uses its built-in default until this is saved."}
+          </p>
         ) : unknownShape ? (
           <p>The stored value has a shape this form does not know; saving replaces it.</p>
         ) : null}

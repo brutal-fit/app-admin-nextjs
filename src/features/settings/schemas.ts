@@ -31,6 +31,8 @@ export const SETTING_KEYS = [
   "trainer.max_rate_inr",
   "support.emergency_number",
   "coach.model",
+  "push.enabled",
+  "payments.enabled",
 ] as const;
 
 export type SettingKey = (typeof SETTING_KEYS)[number];
@@ -40,10 +42,24 @@ export function isSettingKey(value: string): value is SettingKey {
 }
 
 /**
- * How a setting is edited: one whole number, a list of them, the policy lines, text, or one
- * of the coach models.
+ * How a setting is edited: one whole number, a list of them, the policy lines, text, one of
+ * the coach models, or an on/off switch.
  */
-export type SettingInput = "integer" | "integer_list" | "policy_copy" | "phone" | "coach_model";
+export type SettingInput =
+  | "integer"
+  | "integer_list"
+  | "policy_copy"
+  | "phone"
+  | "coach_model"
+  | "boolean";
+
+/** The settings edited as a switch. The server reads a missing or non-boolean value as off. */
+export const BOOLEAN_SETTING_KEYS = ["push.enabled", "payments.enabled"] as const;
+export type BooleanSettingKey = (typeof BOOLEAN_SETTING_KEYS)[number];
+
+export function isBooleanSettingKey(key: SettingKey): key is BooleanSettingKey {
+  return (BOOLEAN_SETTING_KEYS as readonly string[]).includes(key);
+}
 
 export const POLICY_COPY_PARTS = ["home", "online", "cancellation"] as const;
 export type PolicyCopyPart = (typeof POLICY_COPY_PARTS)[number];
@@ -96,6 +112,8 @@ export const SETTING_VALUE_SCHEMAS = {
       "Use 2 to 20 digits, spaces or dashes, with an optional + at the start.",
     ),
   "coach.model": z.enum(COACH_MODELS, { error: "Choose one of the three models." }),
+  "push.enabled": z.boolean({ error: "Use true or false." }),
+  "payments.enabled": z.boolean({ error: "Use true or false." }),
 } as const satisfies Record<SettingKey, z.ZodType>;
 
 export type SettingValue<K extends SettingKey> = z.output<(typeof SETTING_VALUE_SCHEMAS)[K]>;
@@ -160,6 +178,20 @@ export const SETTING_DEFINITIONS: readonly SettingDefinition[] = [
     rule: "One of Claude Haiku 5.5, Claude Sonnet 5.5 or Claude Opus 5.5.",
     note: "Haiku for testing and development; Sonnet for launch.",
   },
+  {
+    key: "push.enabled",
+    label: "Push notifications",
+    input: "boolean",
+    description: "Send every in-app notification to phones as well.",
+    rule: "On or off; a missing value counts as off.",
+  },
+  {
+    key: "payments.enabled",
+    label: "Payments",
+    input: "boolean",
+    description: "Clients pay when requesting; off keeps requests free.",
+    rule: "On or off; a missing value counts as off.",
+  },
 ];
 
 export const setSettingSchema = z.discriminatedUnion("key", [
@@ -186,6 +218,14 @@ export const setSettingSchema = z.discriminatedUnion("key", [
   z.object({
     key: z.literal("coach.model"),
     value: SETTING_VALUE_SCHEMAS["coach.model"],
+  }),
+  z.object({
+    key: z.literal("push.enabled"),
+    value: SETTING_VALUE_SCHEMAS["push.enabled"],
+  }),
+  z.object({
+    key: z.literal("payments.enabled"),
+    value: SETTING_VALUE_SCHEMAS["payments.enabled"],
   }),
 ]);
 
