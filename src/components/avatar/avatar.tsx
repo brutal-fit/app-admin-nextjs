@@ -36,28 +36,47 @@ export function Avatar({
   const sources = avatarSources(avatar, readSupabasePublicEnv()?.url ?? null);
   const src = sources.find((candidate) => !failed.includes(candidate)) ?? null;
   const dimensions = SIZES[size];
+  const isPreset = src?.startsWith("/avatars/") ?? false;
+  const onError = () => {
+    if (src) setFailed((current) => (current.includes(src) ? current : [...current, src]));
+  };
 
   return (
     <span
       aria-hidden="true"
-      data-avatar={src ? (src.startsWith("/avatars/") ? "preset" : "photo") : "initials"}
+      data-avatar={src ? (isPreset ? "preset" : "photo") : "initials"}
       className={cn(
         "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted font-semibold text-muted-foreground select-none",
         dimensions.className,
         className,
       )}
     >
-      {src ? (
+      {src && isPreset ? (
+        // A plain img keeps the preset path relative. next/image rendered it as an absolute
+        // URL built from the request origin, which is http behind the preview proxy and made
+        // https pages load the SVGs as mixed content.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={src}
+          alt=""
+          width={dimensions.px}
+          height={dimensions.px}
+          decoding="async"
+          loading="lazy"
+          className="size-full object-cover"
+          onError={onError}
+        />
+      ) : src ? (
         <Image
-          // Photos come straight from the public bucket and presets are static SVGs, so the
-          // optimizer (and its remote host list) is skipped.
+          // Photos come straight from the public bucket, so the optimizer (and its remote host
+          // list) is skipped.
           unoptimized
           src={src}
           alt=""
           width={dimensions.px}
           height={dimensions.px}
           className="size-full object-cover"
-          onError={() => setFailed((current) => (current.includes(src) ? current : [...current, src]))}
+          onError={onError}
         />
       ) : (
         avatarInitials(name)

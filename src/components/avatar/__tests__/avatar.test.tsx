@@ -27,7 +27,16 @@ describe("Avatar", () => {
   it("shows the preset svg when there is no photo", () => {
     const { container } = render(<Avatar name="Asha Rao" avatar={{ path: null, preset: "dumbbell" }} />);
     expect(state(container)).toBe("preset");
-    expect(container.querySelector("img")?.getAttribute("src")).toMatch(/\/avatars\/dumbbell\.svg$/);
+    // Exactly the relative path: an absolute URL built from the request origin is http behind
+    // the preview proxy and turns https pages into mixed content.
+    expect(container.querySelector("img")?.getAttribute("src")).toBe("/avatars/dumbbell.svg");
+  });
+
+  it("keeps every preset src relative, with no scheme or host", () => {
+    const { container } = render(<Avatar name="Bo" avatar={{ path: null, preset: "whistle" }} size="lg" />);
+    const src = container.querySelector("img")?.getAttribute("src") ?? "";
+    expect(src).toBe("/avatars/whistle.svg");
+    expect(src).not.toMatch(/^[a-z]+:|^\/\//i);
   });
 
   it("shows initials when neither is set", () => {
