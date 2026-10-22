@@ -4,6 +4,9 @@ import { loadCatalogue } from "@/features/catalogue/api";
 import { AreaLists } from "@/features/catalogue/components/area-lists";
 import { CatalogueItemDialog } from "@/features/catalogue/components/catalogue-item-dialog";
 import { CatalogueList } from "@/features/catalogue/components/catalogue-list";
+import { loadExercises } from "@/features/exercises/api";
+import { ExercisesSection } from "@/features/exercises/components/exercises-section";
+import { exercisesHref, isExercisesView } from "@/features/exercises/schemas";
 import { loadProgrammes } from "@/features/programmes/api";
 import { ProgrammesSection } from "@/features/programmes/components/programmes-section";
 import {
@@ -30,11 +33,13 @@ export default async function CataloguePage({
   const params = await searchParams;
   const kind = parseCatalogueKind(params.kind);
   const programmesView = isProgrammesView(params);
+  const exercisesView = isExercisesView(params);
   const selection = parseProgrammeSelection(params);
   const supabase = await createSupabaseServerClient();
-  const [result, programmes] = await Promise.all([
+  const [result, programmes, exercises] = await Promise.all([
     loadCatalogue(supabase),
     programmesView ? loadProgrammes(supabase, selection) : Promise.resolve(null),
+    exercisesView ? loadExercises(supabase) : Promise.resolve(null),
   ]);
   const labels = CATALOGUE_KIND_LABELS[kind];
 
@@ -43,7 +48,7 @@ export default async function CataloguePage({
       <PageHeader
         eyebrow="Catalogue"
         title="Catalogue"
-        description="The lists and programmes the app offers. Active items show in the app in this order; inactive ones stay for the records that use them."
+        description="The lists, programmes and exercises the app offers. Active items show in the app in this order; inactive ones stay for the records that use them."
       />
       <FilterChips
         label="Catalogue lists"
@@ -53,7 +58,7 @@ export default async function CataloguePage({
             label: result.ok
               ? `${CATALOGUE_KIND_LABELS[value].plural} (${result.byKind[value].length})`
               : CATALOGUE_KIND_LABELS[value].plural,
-            active: !programmesView && value === kind,
+            active: !programmesView && !exercisesView && value === kind,
             href: catalogueHref(value),
           })),
           {
@@ -62,10 +67,18 @@ export default async function CataloguePage({
             active: programmesView,
             href: programmesHref(),
           },
+          {
+            id: "exercises",
+            label: exercises?.ok ? `Exercises (${exercises.rows.length})` : "Exercises",
+            active: exercisesView,
+            href: exercisesHref(),
+          },
         ]}
       />
       {programmes ? (
         <ProgrammesSection result={programmes} selection={selection} />
+      ) : exercises ? (
+        <ExercisesSection state={exercises} />
       ) : !result.ok ? (
         <p role="alert" className="text-sm text-destructive">
           {result.error}

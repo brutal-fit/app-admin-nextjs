@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import {
   PROGRAMME_FIGURE_KEYS,
+  isFigureKey,
+  estimateWorkoutMinutes,
   firstIssueMessage,
   parseProgrammeSelection,
   programmesHref,
@@ -10,6 +13,7 @@ import {
   suggestPlanSlug,
   toDayPayload,
   toPlanPayload,
+  workoutItemSchema,
 } from "@/features/programmes/schemas";
 
 const ID = "11111111-1111-4111-8111-111111111111";
@@ -27,14 +31,6 @@ const validPlan = {
   popular: false,
   active: false,
   sortOrder: 0,
-};
-
-const validItem = {
-  kind: "workout" as const,
-  title: "Squats",
-  detail: "",
-  minutes: 10,
-  figureKey: "squat" as const,
 };
 
 describe("savePlanSchema", () => {
@@ -91,47 +87,167 @@ describe("setPlanActiveSchema", () => {
   });
 });
 
-describe("saveDaySchema and toDayPayload", () => {
-  const day = { planId: ID, dayNumber: 1, title: "Day 1", builtBy: "", items: [validItem] };
+describe("workoutItemSchema", () => {
+  const reps = {
+    exerciseId: ID,
+    exerciseKind: "reps" as const,
+    sets: 3,
+    reps: 12,
+    durationS: null,
+    restS: 45,
+    tempo: "",
+  };
+  const timed = { ...reps, exerciseKind: "timed" as const, reps: null, durationS: 30 };
 
-  it("accepts a valid day and builds the payload", () => {
+  it("accepts a reps item with reps and a timed item with a duration", () => {
+    expect(workoutItemSchema.safeParse(reps).success).toBe(true);
+    expect(workoutItemSchema.safeParse(timed).success).toBe(true);
+  });
+
+  it.each([
+    ["reps item without reps", { ...reps, reps: null }, "reps"],
+    ["reps item with a duration", { ...reps, durationS: 30 }, "durationS"],
+    ["reps item with 201 reps", { ...reps, reps: 201 }, "reps"],
+    ["reps item with 0 reps", { ...reps, reps: 0 }, "reps"],
+    ["reps item with fractional reps", { ...reps, reps: 1.5 }, "reps"],
+    ["timed item without duration", { ...timed, durationS: null }, "durationS"],
+    ["timed item with reps", { ...timed, reps: 10 }, "reps"],
+    ["timed item with 4 seconds", { ...timed, durationS: 4 }, "durationS"],
+    ["timed item with 3601 seconds", { ...timed, durationS: 3601 }, "durationS"],
+  ])("rejects %s", (_, item, field) => {
+    const result = workoutItemSchema.safeParse(item);
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.issues.some((issue) => issue.path[0] === field)).toBe(true);
+  });
+
+  it("accepts the boundary values", () => {
+    expect(workoutItemSchema.safeParse({ ...reps, reps: 1 }).success).toBe(true);
+    expect(workoutItemSchema.safeParse({ ...reps, reps: 200 }).success).toBe(true);
+    expect(workoutItemSchema.safeParse({ ...timed, durationS: 5 }).success).toBe(true);
+    expect(workoutItemSchema.safeParse({ ...timed, durationS: 3600 }).success).toBe(true);
+    expect(workoutItemSchema.safeParse({ ...reps, restS: 0 }).success).toBe(true);
+    expect(workoutItemSchema.safeParse({ ...reps, restS: 600 }).success).toBe(true);
+  });
+
+  it.each([
+    ["0 sets", { sets: 0 }],
+    ["21 sets", { sets: 21 }],
+    ["601 seconds of rest", { restS: 601 }],
+    ["negative rest", { restS: -1 }],
+    ["a 21 character tempo", { tempo: "x".repeat(21) }],
+    ["a non-guid exercise", { exerciseId: "squat" }],
+    ["an unknown kind", { exerciseKind: "yoga" }],
+  ])("rejects %s", (_, patch) => {
+    expect(workoutItemSchema.safeParse({ ...reps, ...patch }).success).toBe(false);
+  });
+});
+
+describe("saveDaySchema and toDayPayload", () => {
+  const reps = {
+    exerciseId: ID,
+    exerciseKind: "reps" as const,
+    sets: 3,
+    reps: 12,
+    durationS: null,
+    restS: 45,
+    tempo: "",
+  };
+  const timed = { ...reps, exerciseKind: "timed" as const, reps: null, durationS: 30, tempo: "slow" };
+  const day = { planId: ID, dayNumber: 1, title: "Day 1", builtBy: "", targetMinutes: null, items: [reps, timed] };
+
+  it("builds the payload with only the field each kind uses, in order", () => {
     const payload = toDayPayload(saveDaySchema.parse(day));
     expect(payload.plan_id).toBe(ID);
     expect(payload.built_by).toBeNull();
+    expect(payload.target_minutes).toBeNull();
     expect(payload.items).toEqual([
-      { kind: "workout", title: "Squats", detail: "", minutes: 10, figure_key: "squat" },
+      { exercise_id: ID, sets: 3, rest_s: 45, tempo: null, reps: 12 },
+      { exercise_id: ID, sets: 3, rest_s: 45, tempo: "slow", duration_s: 30 },
     ]);
   });
 
   it("keeps the id of an existing item", () => {
-    const payload = toDayPayload(saveDaySchema.parse({ ...day, items: [{ ...validItem, id: ID }] }));
+    const payload = toDayPayload(saveDaySchema.parse({ ...day, items: [{ ...reps, id: ID }] }));
     expect((payload.items as { id?: string }[])[0].id).toBe(ID);
   });
 
-  it("accepts every listed figure key and rejects others", () => {
-    for (const key of PROGRAMME_FIGURE_KEYS) {
-      expect(saveDaySchema.safeParse({ ...day, items: [{ ...validItem, figureKey: key }] }).success).toBe(true);
-    }
-    expect(saveDaySchema.safeParse({ ...day, items: [{ ...validItem, figureKey: "moonwalk" }] }).success).toBe(false);
-    expect(saveDaySchema.safeParse({ ...day, items: [{ ...validItem, figureKey: null }] }).success).toBe(true);
+  it("accepts a rest day with no items", () => {
+    const result = saveDaySchema.safeParse({ ...day, items: [], targetMinutes: 0 });
+    expect(result.success).toBe(true);
+    if (result.success) expect(toDayPayload(result.data).items).toEqual([]);
+  });
+
+  it("accepts 20 items and rejects 21", () => {
+    expect(saveDaySchema.safeParse({ ...day, items: Array.from({ length: 20 }, () => reps) }).success).toBe(true);
+    expect(saveDaySchema.safeParse({ ...day, items: Array.from({ length: 21 }, () => reps) }).success).toBe(false);
   });
 
   it.each([
     ["day 0", { dayNumber: 0 }],
     ["day 365", { dayNumber: 365 }],
     ["blank title", { title: "" }],
-    ["21 items", { items: Array.from({ length: 21 }, () => validItem) }],
-    ["unknown kind", { items: [{ ...validItem, kind: "yoga" }] }],
-    ["blank item title", { items: [{ ...validItem, title: " " }] }],
-    ["241 minutes", { items: [{ ...validItem, minutes: 241 }] }],
+    ["241 target minutes", { targetMinutes: 241 }],
+    ["negative target minutes", { targetMinutes: -1 }],
+    ["a reps item without reps", { items: [{ ...reps, reps: null }] }],
   ])("rejects %s", (_, patch) => {
     expect(saveDaySchema.safeParse({ ...day, ...patch }).success).toBe(false);
   });
 
+  it("accepts 240 target minutes and a null target", () => {
+    expect(saveDaySchema.safeParse({ ...day, targetMinutes: 240 }).success).toBe(true);
+    expect(saveDaySchema.safeParse({ ...day, targetMinutes: null }).success).toBe(true);
+  });
+
   it("names the item in the first issue", () => {
-    const result = saveDaySchema.safeParse({ ...day, items: [validItem, { ...validItem, title: "" }] });
+    const result = saveDaySchema.safeParse({ ...day, items: [reps, { ...reps, reps: null }] });
     expect(result.success).toBe(false);
-    if (!result.success) expect(firstIssueMessage(result.error, "bad")).toBe("Item 2: Give the item a title.");
+    if (!result.success) {
+      expect(firstIssueMessage(result.error, "bad")).toBe("Item 2: Reps must be a whole number from 1 to 200.");
+    }
+  });
+
+  it("falls back when there is no issue", () => {
+    expect(firstIssueMessage(new z.ZodError([]), "bad")).toBe("bad");
+  });
+});
+
+describe("estimateWorkoutMinutes", () => {
+  it("is 0 for a rest day", () => {
+    expect(estimateWorkoutMinutes([])).toBe(0);
+  });
+
+  it("counts 3 seconds a rep plus rest, per set, rounded up", () => {
+    // 3 sets x (10 reps x 3s + 30s rest) = 180s = 3 minutes
+    expect(
+      estimateWorkoutMinutes([{ exerciseKind: "reps", sets: 3, reps: 10, durationS: null, restS: 30 }]),
+    ).toBe(3);
+    // 1 set x (1 rep x 3s) = 3s -> 1 minute
+    expect(estimateWorkoutMinutes([{ exerciseKind: "reps", sets: 1, reps: 1, durationS: null, restS: 0 }])).toBe(1);
+  });
+
+  it("counts a timed item by its duration", () => {
+    // 2 x (60 + 30) = 180s
+    expect(
+      estimateWorkoutMinutes([{ exerciseKind: "timed", sets: 2, reps: null, durationS: 60, restS: 30 }]),
+    ).toBe(3);
+  });
+
+  it("treats incomplete numbers as nothing and caps at 240", () => {
+    expect(
+      estimateWorkoutMinutes([{ exerciseKind: "reps", sets: 3, reps: null, durationS: null, restS: Number.NaN }]),
+    ).toBe(0);
+    expect(
+      estimateWorkoutMinutes([{ exerciseKind: "timed", sets: 20, reps: null, durationS: 3600, restS: 600 }]),
+    ).toBe(240);
+  });
+});
+
+describe("figure keys", () => {
+  it("lists the fixed 15 keys", () => {
+    expect(PROGRAMME_FIGURE_KEYS).toHaveLength(15);
+    expect(isFigureKey("squat")).toBe(true);
+    expect(isFigureKey("moonwalk")).toBe(false);
+    expect(isFigureKey(null)).toBe(false);
   });
 });
 

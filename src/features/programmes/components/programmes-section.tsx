@@ -12,7 +12,8 @@ const SORT_STEP = 10;
 
 /**
  * The Programmes tab of /catalogue: the plan list with "New plan", and below it the days of
- * the plan chosen in the URL with the editor for the chosen day. Gated by catalogue.manage.
+ * the plan chosen in the URL with the workout editor for the chosen day. Gated by
+ * catalogue.manage.
  */
 export function ProgrammesSection({
   result,
@@ -44,8 +45,8 @@ export function ProgrammesSection({
               Programmes
             </h2>
             <p className="max-w-3xl text-sm text-muted-foreground">
-              Online plans clients enrol in from the app. Clients see active plans only, in this
-              order; each enrolment gets the plan&apos;s default trainer.
+              Self-guided workout plans clients start from the app and follow day by day. Clients
+              see active plans only, in this order. Workouts are built from the Exercises tab.
             </p>
           </div>
           <ProgrammePlanSheet
@@ -106,9 +107,10 @@ export function ProgrammesSection({
                 dayNumber={chosen.selectedDay.dayNumber}
                 day={chosen.selectedDay.day}
                 items={chosen.selectedDay.items}
+                exercises={chosen.selectedDay.exercises}
               />
             ) : (
-              <p className="text-sm text-muted-foreground">Pick a day to edit its items.</p>
+              <p className="text-sm text-muted-foreground">Pick a day to edit its workout.</p>
             )}
           </div>
         </section>

@@ -3,7 +3,7 @@
  * plus the existing tables this panel reads (trainer applications, documents, availability,
  * trainer profiles, services, bookings, booking locations, support cases, catalogue, platform
  * settings, announcements, programme days and items, trainer listings) and the admin functions
- * up to 20261021124448 that the panel calls. Replace this whole
+ * up to 20261022021036 that the panel calls. Replace this whole
  * file with
  * the generated version once the migration is applied:
  *
@@ -418,6 +418,8 @@ export type ProgrammeStage =
   | "completed"
   | "cancelled";
 export type ProgrammeItemKind = "workout" | "nutrition" | "habit" | "rest" | "call";
+/** public.exercises.kind (20261022021036_programme_library.sql): counted in reps or held for a time. */
+export type ExerciseKind = "reps" | "timed";
 
 /**
  * public.programme_days: readable by every signed-in account (plan content is not personal);
@@ -429,6 +431,8 @@ export type ProgrammeDayRow = {
   day_number: number;
   title: string;
   built_by: string | null;
+  /** Null on days written before 20261022021036; 0 on a rest day. */
+  target_minutes: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -443,6 +447,15 @@ export type ProgrammeItemRow = {
   minutes: number | null;
   figure_key: string | null;
   sort_order: number;
+  /** The library exercise (20261022021036); null on items written before the library. */
+  exercise_id: string | null;
+  sets: number | null;
+  /** Set for a reps exercise, null for a timed one. */
+  reps: number | null;
+  /** Set for a timed exercise, null for a reps one. */
+  duration_s: number | null;
+  rest_s: number | null;
+  tempo: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -931,6 +944,19 @@ export type Database = {
       };
       admin_set_plan_active: {
         Args: { p_plan: string; p_active: boolean };
+        Returns: Json;
+      };
+      /** Exercise library (20261022021036_programme_library.sql); catalogue.manage. */
+      admin_list_exercises: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      admin_upsert_exercise: {
+        Args: { p: Json };
+        Returns: Json;
+      };
+      admin_set_exercise_active: {
+        Args: { p_exercise: string; p_active: boolean };
         Returns: Json;
       };
       /** Enrolments where the user is the client or the trainer; needs users.read. */

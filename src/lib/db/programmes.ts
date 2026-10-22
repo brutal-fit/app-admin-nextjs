@@ -1,11 +1,12 @@
 /*
- * The programmes data layer: the only file in src/ that spells the programme tables and
- * functions (20261021124448_programmes.sql). Every call runs with the admin's own session.
- * Plans are read and written through the admin functions (catalogue.manage, audited); days
- * and items are read straight from their tables, which every signed-in account may read,
- * and written a whole day at a time through admin_upsert_programme_day. Enrolments come from
- * admin_list_enrolments (users.read). Every wrapper throws AppError on failure, and every
- * jsonb reply is checked with Zod before the panel renders it.
+ * The programmes data layer: the only file in src/ that spells the programme and exercise
+ * tables and functions (20261021124448_programmes.sql, 20261022021036_programme_library.sql).
+ * Every call runs with the admin's own session. Plans and exercises are read and written
+ * through the admin functions (catalogue.manage, audited); days and items are read straight
+ * from their tables, which every signed-in account may read, and written a whole day at a
+ * time through admin_upsert_programme_day. Enrolments come from admin_list_enrolments
+ * (users.read). Every wrapper throws AppError on failure, and every jsonb reply is checked
+ * with Zod before the panel renders it.
  */
 import { z } from "zod";
 import { AppError, toAppError } from "@/lib/supabase/errors";
@@ -24,6 +25,9 @@ const RPC = {
   upsertDay: "admin_upsert_programme_day",
   setActive: "admin_set_plan_active",
   listEnrolments: "admin_list_enrolments",
+  listExercises: "admin_list_exercises",
+  upsertExercise: "admin_upsert_exercise",
+  setExerciseActive: "admin_set_exercise_active",
 } as const;
 
 const text = z.string().nullable().optional();
@@ -39,6 +43,7 @@ export const PROGRAMME_STAGE_VALUES = [
   "cancelled",
 ] as const;
 export const PROGRAMME_ITEM_KIND_VALUES = ["workout", "nutrition", "habit", "rest", "call"] as const;
+export const EXERCISE_KIND_VALUES = ["reps", "timed"] as const;
 
 /** The stored programme_plans row, as admin_upsert_programme_plan and admin_set_plan_active return it. */
 export const programmePlanRowSchema = z.object({
@@ -94,6 +99,12 @@ const programmeItemReplySchema = z.object({
   minutes: z.number().int().nullable(),
   figure_key: z.string().nullable(),
   sort_order: z.number().int(),
+  exercise_id: z.string().nullable().optional(),
+  sets: z.number().int().nullable().optional(),
+  reps: z.number().int().nullable().optional(),
+  duration_s: z.number().int().nullable().optional(),
+  rest_s: z.number().int().nullable().optional(),
+  tempo: z.string().nullable().optional(),
 });
 
 /** admin_upsert_programme_day's reply: the stored day with its items in order. */
@@ -103,6 +114,7 @@ export const programmeDayReplySchema = z.object({
   day_number: z.number().int(),
   title: z.string(),
   built_by: z.string().nullable(),
+  target_minutes: z.number().int().nullable().optional(),
   items: z.array(programmeItemReplySchema),
 });
 export type ProgrammeDayReply = z.infer<typeof programmeDayReplySchema>;
@@ -129,6 +141,31 @@ export const adminEnrolmentSchema = z.object({
 });
 export const adminEnrolmentListSchema = z.array(adminEnrolmentSchema);
 export type AdminEnrolment = z.infer<typeof adminEnrolmentSchema>;
+
+/** The stored exercises row, as admin_upsert_exercise and admin_set_exercise_active return it. */
+export const exerciseRowSchema = z.object({
+  id: z.string(),
+  key: z.string(),
+  name: z.string(),
+  muscle_group: z.string(),
+  equipment: z.array(z.string()),
+  cues: z.array(z.string()),
+  kind: z.enum(EXERCISE_KIND_VALUES),
+  video_url: z.string().nullable(),
+  figure_key: z.string(),
+  sort_order: z.number().int(),
+  active: z.boolean(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+export type ExerciseRow = z.infer<typeof exerciseRowSchema>;
+
+/** One row of admin_list_exercises: the exercise plus how many workout items use it. */
+export const adminExerciseSchema = exerciseRowSchema.extend({
+  item_count: count,
+});
+export const adminExerciseListSchema = z.array(adminExerciseSchema);
+export type AdminExercise = z.infer<typeof adminExerciseSchema>;
 
 function parseReply<T>(schema: z.ZodType<T>, data: unknown, what: string): T {
   const parsed = schema.safeParse(data);
@@ -169,8 +206,9 @@ export async function setProgrammePlanActive(
 }
 
 /**
- * Creates or replaces one day with its items in the order sent. Items with an id are
- * updated; items left out are removed along with clients' ticks on them.
+ * Creates or replaces one workout day with its exercises in the order sent. Items with an id
+ * are updated; items left out are removed along with clients' ticks on them; no items makes
+ * a rest day.
  */
 export async function upsertProgrammeDay(
   client: AppSupabaseClient,
@@ -179,6 +217,37 @@ export async function upsertProgrammeDay(
   const { data, error } = await client.rpc(RPC.upsertDay, { p: payload });
   if (error) throw toAppError(error);
   return parseReply(programmeDayReplySchema, data, "saved day");
+}
+
+/** Every exercise, retired ones included, in the library's order. */
+export async function listExercises(client: AppSupabaseClient): Promise<AdminExercise[]> {
+  const { data, error } = await client.rpc(RPC.listExercises);
+  if (error) throw toAppError(error);
+  return parseReply(adminExerciseListSchema, data, "exercise library");
+}
+
+/**
+ * Creates an exercise (no id) or updates one (id). Keys left out keep their stored value;
+ * the function refuses unknown keys and a kind change on an exercise workouts already use.
+ */
+export async function upsertExercise(
+  client: AppSupabaseClient,
+  payload: { [key: string]: Json },
+): Promise<ExerciseRow> {
+  const { data, error } = await client.rpc(RPC.upsertExercise, { p: payload });
+  if (error) throw toAppError(error);
+  return parseReply(exerciseRowSchema, data, "saved exercise");
+}
+
+/** Retired exercises stay on the workouts that use them but cannot be added to new items. */
+export async function setExerciseActive(
+  client: AppSupabaseClient,
+  exerciseId: string,
+  active: boolean,
+): Promise<ExerciseRow> {
+  const { data, error } = await client.rpc(RPC.setExerciseActive, { p_exercise: exerciseId, p_active: active });
+  if (error) throw toAppError(error);
+  return parseReply(exerciseRowSchema, data, "saved exercise");
 }
 
 /** The authored days of one plan, by day number. */

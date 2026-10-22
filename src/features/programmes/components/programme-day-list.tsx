@@ -6,8 +6,9 @@ import { cn } from "@/lib/utils";
 import type { ProgrammeDayRow } from "@/types/database";
 
 /**
- * The authored days of one plan, each linking to its editor, plus "Add day" for the next
- * day number while the plan has room. Gated by catalogue.manage.
+ * The authored days of one plan with their target minutes ("Rest" at 0), each linking to
+ * its workout editor, plus "Add day" for the next day number while the plan has room.
+ * Gated by catalogue.manage.
  */
 export function ProgrammeDayList({
   planId,
@@ -46,6 +47,11 @@ export function ProgrammeDayList({
                 >
                   <span className="w-14 shrink-0 text-muted-foreground">Day {day.day_number}</span>
                   <span className={cn("min-w-0 flex-1 truncate", current && "font-medium")}>{day.title}</span>
+                  {day.target_minutes === null ? null : (
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {day.target_minutes === 0 ? "Rest" : `${day.target_minutes} min`}
+                    </span>
+                  )}
                 </Link>
               </li>
             );

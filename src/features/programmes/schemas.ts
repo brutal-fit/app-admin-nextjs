@@ -1,9 +1,6 @@
 import { z } from "zod";
-import {
-  PROGRAMME_ITEM_KIND_VALUES,
-  PROGRAMME_LEVEL_VALUES,
-} from "@/lib/db/programmes";
-import type { Json, ProgrammeItemKind, ProgrammeLevel } from "@/types/database";
+import { EXERCISE_KIND_VALUES, PROGRAMME_LEVEL_VALUES } from "@/lib/db/programmes";
+import type { ExerciseKind, Json, ProgrammeLevel } from "@/types/database";
 
 // Limits as admin_upsert_programme_plan and admin_upsert_programme_day check them.
 export const PLAN_SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{1,59}$/;
@@ -21,9 +18,17 @@ export const PLAN_SORT_MAX = 10000;
 export const DAY_TITLE_MAX = 80;
 export const DAY_BUILT_BY_MAX = 80;
 export const DAY_ITEMS_MAX = 20;
-export const ITEM_TITLE_MAX = 120;
-export const ITEM_DETAIL_MAX = 500;
-export const ITEM_MINUTES_MAX = 240;
+export const DAY_TARGET_MINUTES_MAX = 240;
+export const ITEM_SETS_MIN = 1;
+export const ITEM_SETS_MAX = 20;
+export const ITEM_REPS_MIN = 1;
+export const ITEM_REPS_MAX = 200;
+export const ITEM_DURATION_MIN = 5;
+export const ITEM_DURATION_MAX = 3600;
+export const ITEM_REST_MAX = 600;
+export const ITEM_TEMPO_MAX = 20;
+/** admin_upsert_programme_day counts a rep as 3 seconds when it estimates a day's minutes. */
+export const SECONDS_PER_REP = 3;
 /** programme_days.day_number allows up to 364 (52 weeks). */
 export const DAY_NUMBER_MAX = PLAN_WEEKS_MAX * 7;
 
@@ -32,15 +37,6 @@ export const PROGRAMME_LEVEL_LABELS: Record<ProgrammeLevel, string> = {
   beginner: "Beginner",
   regular: "Regular",
   advanced: "Advanced",
-};
-
-export const PROGRAMME_ITEM_KINDS = PROGRAMME_ITEM_KIND_VALUES;
-export const PROGRAMME_ITEM_KIND_LABELS: Record<ProgrammeItemKind, string> = {
-  workout: "Workout",
-  nutrition: "Nutrition",
-  habit: "Habit",
-  rest: "Rest",
-  call: "Call",
 };
 
 /**
@@ -217,21 +213,64 @@ export const setPlanActiveSchema = z.object({
   active: z.boolean(),
 });
 
-// ------------------------------------------------------------------ day editor
+// ------------------------------------------------------------------ workout editor
 
-export const programmeItemSchema = z.object({
-  /** Null or left out for a new item; an existing item keeps its id so clients' ticks survive. */
-  id: z.guid("This item belongs to another day.").nullable().optional(),
-  kind: z.enum(PROGRAMME_ITEM_KINDS, { error: "Kind must be workout, nutrition, habit, rest or call." }),
-  title: z
-    .string()
-    .trim()
-    .min(1, "Give the item a title.")
-    .max(ITEM_TITLE_MAX, `Keep the item title to ${ITEM_TITLE_MAX} characters or fewer.`),
-  detail: z.string().trim().max(ITEM_DETAIL_MAX, `Keep the detail to ${ITEM_DETAIL_MAX} characters or fewer.`),
-  minutes: wholeNumber(0, ITEM_MINUTES_MAX, `Minutes must be a whole number from 0 to ${ITEM_MINUTES_MAX}.`).nullable(),
-  figureKey: z.enum(PROGRAMME_FIGURE_KEYS, { error: "Pick a figure from the list." }).nullable(),
-});
+const itemCountMessage = "Enter a whole number.";
+
+/**
+ * One exercise of a workout day. `exerciseKind` is the picked exercise's kind from the
+ * library: a reps exercise takes reps and no duration, a timed one a duration in seconds and
+ * no reps, as admin_upsert_programme_day checks them.
+ */
+export const workoutItemSchema = z
+  .object({
+    /** Null or left out for a new item; an existing item keeps its id so clients' ticks survive. */
+    id: z.guid("This item belongs to another day.").nullable().optional(),
+    exerciseId: z.guid("Pick an exercise from the library."),
+    exerciseKind: z.enum(EXERCISE_KIND_VALUES, { error: "Pick an exercise from the library." }),
+    sets: wholeNumber(ITEM_SETS_MIN, ITEM_SETS_MAX, `Sets must be a whole number from ${ITEM_SETS_MIN} to ${ITEM_SETS_MAX}.`),
+    reps: z.number({ error: itemCountMessage }).nullable(),
+    durationS: z.number({ error: itemCountMessage }).nullable(),
+    restS: wholeNumber(0, ITEM_REST_MAX, `Rest must be a whole number of seconds from 0 to ${ITEM_REST_MAX}.`),
+    tempo: z.string().trim().max(ITEM_TEMPO_MAX, `Keep the tempo to ${ITEM_TEMPO_MAX} characters or fewer.`),
+  })
+  .superRefine((item, context) => {
+    const within = (value: number | null, min: number, max: number) =>
+      value !== null && Number.isInteger(value) && value >= min && value <= max;
+    if (item.exerciseKind === "reps") {
+      if (!within(item.reps, ITEM_REPS_MIN, ITEM_REPS_MAX)) {
+        context.addIssue({
+          code: "custom",
+          path: ["reps"],
+          message: `Reps must be a whole number from ${ITEM_REPS_MIN} to ${ITEM_REPS_MAX}.`,
+        });
+      }
+      if (item.durationS !== null) {
+        context.addIssue({
+          code: "custom",
+          path: ["durationS"],
+          message: "This exercise is counted in reps, not seconds.",
+        });
+      }
+    } else {
+      if (!within(item.durationS, ITEM_DURATION_MIN, ITEM_DURATION_MAX)) {
+        context.addIssue({
+          code: "custom",
+          path: ["durationS"],
+          message: `Duration must be a whole number of seconds from ${ITEM_DURATION_MIN} to ${ITEM_DURATION_MAX}.`,
+        });
+      }
+      if (item.reps !== null) {
+        context.addIssue({
+          code: "custom",
+          path: ["reps"],
+          message: "This exercise is held for a time, not counted in reps.",
+        });
+      }
+    }
+  });
+
+export type WorkoutItemInput = z.input<typeof workoutItemSchema>;
 
 export const saveDaySchema = z.object({
   planId: planIdSchema,
@@ -242,31 +281,65 @@ export const saveDaySchema = z.object({
     .min(1, "Give the day a title.")
     .max(DAY_TITLE_MAX, `Keep the day title to ${DAY_TITLE_MAX} characters or fewer.`),
   builtBy: z.string().trim().max(DAY_BUILT_BY_MAX, `Keep "built by" to ${DAY_BUILT_BY_MAX} characters or fewer.`),
-  items: z.array(programmeItemSchema).max(DAY_ITEMS_MAX, `A day holds up to ${DAY_ITEMS_MAX} items.`),
+  /** Null lets the server count it from the exercises (0 on a rest day). */
+  targetMinutes: wholeNumber(
+    0,
+    DAY_TARGET_MINUTES_MAX,
+    `Target minutes must be a whole number from 0 to ${DAY_TARGET_MINUTES_MAX}.`,
+  ).nullable(),
+  /** No items makes a rest day. */
+  items: z.array(workoutItemSchema).max(DAY_ITEMS_MAX, `A workout holds up to ${DAY_ITEMS_MAX} exercises.`),
 });
 
 export type SaveDayInput = z.input<typeof saveDaySchema>;
 export type SaveDayData = z.output<typeof saveDaySchema>;
 
-/** The admin_upsert_programme_day payload: the whole day, items in the order shown. */
+/**
+ * The admin_upsert_programme_day payload: the whole day, exercises in the order shown (the
+ * server numbers them 10 apart). Only the field the exercise's kind uses is sent.
+ */
 export function toDayPayload(data: SaveDayData): { [key: string]: Json } {
   return {
     plan_id: data.planId,
     day_number: data.dayNumber,
     title: data.title,
     built_by: data.builtBy === "" ? null : data.builtBy,
+    target_minutes: data.targetMinutes,
     items: data.items.map((item) => {
       const entry: { [key: string]: Json } = {
-        kind: item.kind,
-        title: item.title,
-        detail: item.detail,
-        minutes: item.minutes,
-        figure_key: item.figureKey,
+        exercise_id: item.exerciseId,
+        sets: item.sets,
+        rest_s: item.restS,
+        tempo: item.tempo === "" ? null : item.tempo,
       };
+      if (item.exerciseKind === "reps") entry.reps = item.reps;
+      else entry.duration_s = item.durationS;
       if (item.id) entry.id = item.id;
       return entry;
     }),
   };
+}
+
+type MinutesItem = {
+  exerciseKind: ExerciseKind;
+  sets: number;
+  reps: number | null;
+  durationS: number | null;
+  restS: number;
+};
+
+/**
+ * The minutes the server sets as the day's target when none is given: every set's work (a
+ * rep counts 3 seconds) plus its rest, rounded up, at most 240. Items with numbers not yet
+ * valid count as nothing, so the estimate never shows NaN.
+ */
+export function estimateWorkoutMinutes(items: readonly MinutesItem[]): number {
+  const safe = (value: number | null) => (value !== null && Number.isFinite(value) && value > 0 ? value : 0);
+  const seconds = items.reduce((total, item) => {
+    const work = item.exerciseKind === "timed" ? safe(item.durationS) : safe(item.reps) * SECONDS_PER_REP;
+    return total + safe(item.sets) * (work + safe(item.restS));
+  }, 0);
+  return Math.min(Math.ceil(seconds / 60), DAY_TARGET_MINUTES_MAX);
 }
 
 /** The first problem in words, naming the item ("Item 2: ...") when it is about one. */

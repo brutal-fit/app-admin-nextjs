@@ -1,7 +1,8 @@
 /*
  * Server-side loaders for the programmes tab on /catalogue (catalogue.manage) and the
  * enrolments on the user 360 (users.read). Each settles on its own so one failing read does
- * not blank the rest of the page.
+ * not blank the rest of the page. The exercise library is read only when a day is open, for
+ * the workout editor's picker.
  */
 import {
   listEnrolments,
@@ -13,6 +14,7 @@ import {
   type AdminProgrammePlan,
   type OnlineTrainerOption,
 } from "@/lib/db/programmes";
+import { loadExercises, type ExercisesState } from "@/features/exercises/api";
 import { toAppError } from "@/lib/supabase/errors";
 import type { AppSupabaseClient } from "@/lib/supabase/server";
 import type { ProgrammeDayRow, ProgrammeItemRow } from "@/types/database";
@@ -27,6 +29,8 @@ export type DaySelection = {
   /** Null when this day has not been written yet. */
   day: ProgrammeDayRow | null;
   items: ProgrammeItemRow[];
+  /** The library the editor picks exercises from. */
+  exercises: ExercisesState;
 };
 
 export type PlanSelection =
@@ -63,8 +67,11 @@ async function loadPlanSelection(
       return { ok: false, error: `This plan runs ${plan.weeks * 7} days; day ${dayNumber} is past its end.` };
     }
     const day = days.find((entry) => entry.day_number === dayNumber) ?? null;
-    const items = day ? await listProgrammeItems(client, day.id) : [];
-    return { ok: true, plan, days, selectedDay: { dayNumber, day, items } };
+    const [items, exercises] = await Promise.all([
+      day ? listProgrammeItems(client, day.id) : Promise.resolve<ProgrammeItemRow[]>([]),
+      loadExercises(client),
+    ]);
+    return { ok: true, plan, days, selectedDay: { dayNumber, day, items, exercises } };
   } catch (error) {
     return { ok: false, error: toAppError(error).message };
   }

@@ -30,7 +30,7 @@ const base: AdminEnrolment = {
 describe("UserEnrolments", () => {
   it("shows the empty state without rows", () => {
     render(<UserEnrolments userId={USER} rows={[]} permissions={[]} />);
-    expect(screen.getByText("No programme enrolments.")).toBeTruthy();
+    expect(screen.getByText("No programmes started.")).toBeTruthy();
   });
 
   it("shows the error instead of the list", () => {
@@ -39,43 +39,30 @@ describe("UserEnrolments", () => {
     expect(screen.queryByText("Home starter")).toBeNull();
   });
 
-  it("renders plan, stage, trainer and a booking link with bookings.read", () => {
+  it("renders programme rows without trainer or assessment", () => {
     render(<UserEnrolments userId={USER} rows={[base]} permissions={["bookings.read", "users.read"]} />);
+    expect(screen.getByText("Programmes")).toBeTruthy();
     expect(screen.getByText("Home starter")).toBeTruthy();
-    expect(screen.getByText("Assessment booked")).toBeTruthy();
-    expect(screen.getByText("Trainer")).toBeTruthy();
-    const hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
-    expect(hrefs).toContain(`/bookings/${BOOKING}`);
-    expect(hrefs).toContain(`/users/${OTHER}`);
-    expect(screen.getByText("Free during the pilot")).toBeTruthy();
-    expect(screen.getByText("Not started")).toBeTruthy();
-  });
-
-  it("renders no links without permissions", () => {
-    render(<UserEnrolments userId={USER} rows={[base]} permissions={[]} />);
+    expect(screen.getByText("Exercises ticked")).toBeTruthy();
+    expect(screen.queryByText("Trainer")).toBeNull();
+    expect(screen.queryByText("Ravi")).toBeNull();
+    expect(screen.queryByText("Assessment")).toBeNull();
     expect(screen.queryAllByRole("link")).toHaveLength(0);
-    expect(screen.getByText("Ravi")).toBeTruthy();
+    expect(screen.queryByText("As trainer")).toBeNull();
   });
 
-  it("marks the trainer view and an unbooked assessment", () => {
-    const row: AdminEnrolment = { ...base, client_id: OTHER, trainer_id: USER, assessment: null, stage: "active" };
-    render(<UserEnrolments userId={USER} rows={[row]} permissions={[]} />);
+  it("marks a legacy row where this user was the trainer and links the client with users.read", () => {
+    const row: AdminEnrolment = { ...base, client_id: OTHER, trainer_id: USER, client_name: "Meera", stage: "active" };
+    render(<UserEnrolments userId={USER} rows={[row]} permissions={["users.read"]} />);
     expect(screen.getByText("As trainer")).toBeTruthy();
     expect(screen.getByText("Client")).toBeTruthy();
-    expect(screen.getByText("Not booked")).toBeTruthy();
+    const hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
+    expect(hrefs).toContain(`/users/${OTHER}`);
   });
 
-  it("shows Not assigned when no trainer and a cancelled date", () => {
-    const row: AdminEnrolment = {
-      ...base,
-      trainer_id: null,
-      trainer_name: null,
-      assessment: null,
-      stage: "cancelled",
-      cancelled_at: "2026-10-21T06:00:00Z",
-    };
+  it("shows the cancelled date", () => {
+    const row: AdminEnrolment = { ...base, stage: "cancelled", cancelled_at: "2026-10-21T06:00:00Z" };
     render(<UserEnrolments userId={USER} rows={[row]} permissions={[]} />);
-    expect(screen.getByText("Not assigned")).toBeTruthy();
     expect(screen.getByText("Cancelled", { selector: "dt" })).toBeTruthy();
   });
 });
