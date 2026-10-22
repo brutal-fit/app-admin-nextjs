@@ -39,7 +39,7 @@ export default async function MyGymRequestsPage({
       <PageHeader
         eyebrow={context.current.name}
         title="Requests"
-        description="Booking requests for your gym, soonest first. Allot a trainer from your staff to confirm one, or decline it with a reason for the client."
+        description="Booking and reschedule requests for your gym, soonest first. Allot a trainer from your staff to confirm a request or decline it with a reason; accept a new time or keep the original."
       >
         <GymSwitcher gyms={context.gyms} currentId={context.current.id} path="/my-gym/requests" />
       </PageHeader>

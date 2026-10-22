@@ -5,7 +5,7 @@ import { STAFF_ROLE_LABELS, STAFF_STATUS_LABELS, staffStatusTone } from "@/featu
 import { formatDateTime } from "@/features/applications/format";
 import { permittedHref } from "@/features/support/format";
 import { describePhone } from "@/features/users/format";
-import type { GymStaffMember } from "@/lib/db/gyms";
+import type { GymStaffMember } from "@/lib/db/gyms-manager";
 
 /**
  * The gym's managers and trainers from admin_get_gym, invites included. A name shows once the

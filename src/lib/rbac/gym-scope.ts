@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { listManagedGyms, type ManagedGymSummary } from "@/lib/db/gyms";
+import { listManagedGyms, type ManagedGymSummary } from "@/lib/db/gyms-manager";
 import { can } from "@/lib/rbac/can";
 import { getSessionAccess } from "@/lib/rbac/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";

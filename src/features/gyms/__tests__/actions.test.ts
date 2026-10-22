@@ -13,12 +13,11 @@ vi.mock("@/lib/rbac/require-permission", async () => {
   class ForbiddenError extends Error {}
   return { ForbiddenError, requirePermission: mocks.requirePermission };
 });
-vi.mock("@/lib/db/gyms", () => ({
+vi.mock("@/lib/db/gyms-admin", () => ({
   createGym: vi.fn(),
   setGymListed: vi.fn(),
   setGymServicePrice: vi.fn(),
   verifyGym: mocks.verifyGym,
-  GYM_STATUS_VALUES: ["draft", "submitted", "verified", "listed", "suspended"],
 }));
 
 import { verifyGymAction } from "@/features/gyms/actions";

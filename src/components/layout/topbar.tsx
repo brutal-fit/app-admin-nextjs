@@ -15,7 +15,7 @@ import { useSessionStore } from "@/stores/session-store-provider";
  * the signed-in admin with their roles, and sign out. On small screens it also carries the
  * nav, since the sidebar is hidden there.
  */
-export function Topbar({ items }: { items: SidebarNavItem[] }) {
+export function Topbar({ items, keepGym = false }: { items: SidebarNavItem[]; keepGym?: boolean }) {
   const apple = useApplePlatform();
   const setPaletteOpen = useCommandStore((state) => state.setPaletteOpen);
   const setShortcutsOpen = useCommandStore((state) => state.setShortcutsOpen);
@@ -57,7 +57,7 @@ export function Topbar({ items }: { items: SidebarNavItem[] }) {
         <SignOutButton />
       </div>
       <div className="border-t border-border px-4 py-2 md:hidden">
-        <SidebarNav items={items} orientation="horizontal" />
+        <SidebarNav items={items} orientation="horizontal" keepGym={keepGym} />
       </div>
     </header>
   );

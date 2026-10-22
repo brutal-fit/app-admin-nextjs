@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { bindGymInvites } from "@/lib/db/gyms";
+import { bindGymInvites } from "@/lib/db/gyms-manager";
 import { getMyAccess } from "@/lib/db/rbac";
 import { hasPanelAccess } from "@/lib/rbac/can";
 import { homeHref } from "@/lib/rbac/permissions";

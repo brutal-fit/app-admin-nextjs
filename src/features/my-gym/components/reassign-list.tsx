@@ -2,7 +2,7 @@ import { formatSessionRange } from "@/features/bookings/format";
 import { firstName } from "@/features/gyms/format";
 import { AllotTrainerForm } from "@/features/my-gym/components/allot-trainer-form";
 import type { TrainerOption } from "@/features/my-gym/format";
-import type { BookingDetailsRow } from "@/types/database";
+import type { GymBookingRow } from "@/lib/db/gyms-manager";
 
 const MODE = { home: "At the gym", online: "Online" } as const;
 
@@ -14,7 +14,7 @@ export function ReassignList({
   bookings,
   staffOptions,
 }: {
-  bookings: readonly BookingDetailsRow[];
+  bookings: readonly GymBookingRow[];
   staffOptions: readonly TrainerOption[];
 }) {
   if (bookings.length === 0) {

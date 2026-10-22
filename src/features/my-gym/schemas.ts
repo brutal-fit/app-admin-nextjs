@@ -10,7 +10,7 @@ import {
 } from "@/features/gyms/schemas";
 import { hoursProblem } from "@/features/my-gym/format";
 import { indianMobileDigits } from "@/features/users/schemas";
-import type { GymProfileFields } from "@/lib/db/gyms";
+import type { GymProfileFields } from "@/lib/db/gyms-manager";
 
 // The limits the gym functions check (20261022035524_gyms.sql).
 export const FACILITIES_MAX = 30;
@@ -175,6 +175,12 @@ export const allotTrainerSchema = z.object({
   trainerUserId: z.guid("Pick a trainer from your staff."),
   /** allot answers a request; reassign changes the trainer of a confirmed session. */
   kind: z.enum(["allot", "reassign"]),
+});
+
+/** accept true moves the session to the asked time; false keeps the original. */
+export const respondToRescheduleSchema = z.object({
+  bookingId,
+  accept: z.boolean({ error: "Choose accept or keep the original time." }),
 });
 
 export const declineRequestSchema = z.object({

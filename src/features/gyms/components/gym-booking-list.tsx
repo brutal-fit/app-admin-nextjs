@@ -4,7 +4,7 @@ import { formatInr } from "@/features/applications/format";
 import { BookingStatusBadge } from "@/features/bookings/components/booking-status-badge";
 import { formatSessionRange } from "@/features/bookings/format";
 import { permittedHref } from "@/features/support/format";
-import type { AdminGymBooking } from "@/lib/db/gyms";
+import type { AdminGymBooking } from "@/lib/db/gyms-admin";
 
 const MODE = { home: "At the gym", online: "Online" } as const;
 

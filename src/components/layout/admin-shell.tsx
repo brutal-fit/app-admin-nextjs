@@ -49,7 +49,10 @@ export async function AdminShell({ children }: { children: ReactNode }) {
   }
 
   // The gym area shows only for a session that manages a gym right now.
-  const managesGym = (await getGymScope()).status === "ok";
+  const gymScope = await getGymScope();
+  const managesGym = gymScope.status === "ok";
+  // A manager of several gyms switches with ?gym=; the nav links keep it.
+  const keepGym = gymScope.status === "ok" && gymScope.gyms.length > 1;
   const items = sessionNavItems(access.permissions, { managesGym }).map(({ href, label, section }) =>
     section ? { href, label, section } : { href, label },
   );
@@ -71,14 +74,14 @@ export async function AdminShell({ children }: { children: ReactNode }) {
           >
             BRUTAL <span className="font-medium text-muted-foreground">admin</span>
           </Link>
-          <SidebarNav items={items} />
+          <SidebarNav items={items} keepGym={keepGym} />
           <p className="mt-auto px-3 text-xs text-muted-foreground">
             Press <kbd className="rounded-sm bg-muted px-1 font-sans">?</kbd> for shortcuts.
           </p>
         </aside>
         <div className="relative isolate flex min-w-0 flex-1 flex-col">
           <Backdrop />
-          <Topbar items={items} />
+          <Topbar items={items} keepGym={keepGym} />
           <main id="main" tabIndex={-1} className="flex-1 px-4 py-8 outline-none sm:px-6 lg:px-8">
             <div className="mx-auto w-full max-w-7xl">{children}</div>
           </main>

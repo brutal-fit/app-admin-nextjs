@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { PRICE_MAX_INR, PRICE_MIN_INR } from "@/features/applications/schemas";
 import { indianMobileDigits } from "@/features/users/schemas";
-import { GYM_STATUS_VALUES } from "@/lib/db/gyms";
+import { GYM_STATUS_VALUES } from "@/lib/db/gyms-manager";
 import type { GymStatus } from "@/types/database";
 
 /** The most rows the list shows; admin_list_gyms stops at 200 per call. */

@@ -33,9 +33,20 @@ function PartyLink({ href, name, avatar }: { href: string | null; name: string; 
   );
 }
 
+/** A gym booking the gym has not allotted yet: no trainer to show, so the gym instead. */
+function AwaitingAllotment({ gymName }: { gymName: string | undefined }) {
+  return (
+    <span className="flex flex-col">
+      <span className="text-muted-foreground">Awaiting gym allotment</span>
+      {gymName ? <span className="text-xs text-muted-foreground">{gymName}</span> : null}
+    </span>
+  );
+}
+
 function columns(
   links: { users: boolean; trainers: boolean },
   avatars: UserAvatarMap,
+  gymNames: Record<string, string>,
 ): DataTableColumn<BookingListRow>[] {
   return [
     {
@@ -64,13 +75,16 @@ function columns(
       id: "trainer",
       header: "Trainer",
       sortValue: (row) => row.trainer_name,
-      cell: (row) => (
-        <PartyLink
-          href={links.trainers ? `/trainers/${row.trainer_id}` : links.users ? `/users/${row.trainer_id}` : null}
-          name={row.trainer_name || "Unnamed"}
-          avatar={avatars[row.trainer_id]}
-        />
-      ),
+      cell: (row) =>
+        row.trainer_id === null ? (
+          <AwaitingAllotment gymName={gymNames[row.id]} />
+        ) : (
+          <PartyLink
+            href={links.trainers ? `/trainers/${row.trainer_id}` : links.users ? `/users/${row.trainer_id}` : null}
+            name={row.trainer_name || "Unnamed"}
+            avatar={avatars[row.trainer_id]}
+          />
+        ),
     },
     { id: "mode", header: "Mode", sortValue: (row) => row.mode, cell: (row) => MODE_LABELS[row.mode] },
     {
@@ -110,11 +124,13 @@ function columns(
 
 /**
  * Bookings in the server's order (newest session first). Gated by bookings.read; client links
- * need users.read, trainer links open the trainer page with applications.read.
+ * need users.read, trainer links open the trainer page with applications.read. A gym booking
+ * without a trainer reads "Awaiting gym allotment" with the gym's name.
  */
 export function BookingTable({
   rows,
   avatars,
+  gymNames = {},
   filtered,
   usersVisible,
   trainersVisible,
@@ -122,6 +138,8 @@ export function BookingTable({
   rows: BookingListRow[];
   /** Avatars by user id; a missing id shows initials. */
   avatars: UserAvatarMap;
+  /** Gym names by booking id for rows without a trainer; a missing id shows no name. */
+  gymNames?: Record<string, string>;
   filtered: boolean;
   usersVisible: boolean;
   trainersVisible: boolean;
@@ -129,7 +147,7 @@ export function BookingTable({
   return (
     <DataTable
       rows={rows}
-      columns={columns({ users: usersVisible, trainers: trainersVisible }, avatars)}
+      columns={columns({ users: usersVisible, trainers: trainersVisible }, avatars, gymNames)}
       rowKey={(row) => row.id}
       caption="Bookings"
       countLabel={(count) => `${count} ${count === 1 ? "booking" : "bookings"} on this page`}

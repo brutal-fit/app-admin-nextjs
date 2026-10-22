@@ -8,13 +8,15 @@ import {
   listGymBookings,
   listGymRequests,
   listGymStaff,
+  type GymBookingRow,
+  type GymStaffMember,
   type ManagedGym,
   type ManagedGymSummary,
-} from "@/lib/db/gyms";
+} from "@/lib/db/gyms-manager";
 import { getGymScope } from "@/lib/rbac/gym-scope";
 import { toAppError } from "@/lib/supabase/errors";
 import type { AppSupabaseClient } from "@/lib/supabase/server";
-import type { BookingDetailsRow, GymRequestRow, GymStaffRow } from "@/types/database";
+import type { GymRequestRow } from "@/types/database";
 import { pickGymId } from "@/features/my-gym/schemas";
 
 export type MyGymContext =
@@ -48,8 +50,9 @@ export async function loadMyGym(client: AppSupabaseClient, gymId: string): Promi
 export type RequestsPage = {
   requests: GymRequestRow[];
   /** Confirmed sessions that have not started: the ones a manager may still reassign. */
-  upcoming: BookingDetailsRow[];
-  staff: GymStaffRow[];
+  upcoming: GymBookingRow[];
+  /** Active and invited staff with names (gym_list_staff). */
+  staff: GymStaffMember[];
 };
 
 export async function loadRequestsPage(
@@ -69,7 +72,7 @@ export async function loadRequestsPage(
   }
 }
 
-export async function loadStaffPage(client: AppSupabaseClient, gymId: string): Promise<Loaded<{ staff: GymStaffRow[] }>> {
+export async function loadStaffPage(client: AppSupabaseClient, gymId: string): Promise<Loaded<{ staff: GymStaffMember[] }>> {
   try {
     return { ok: true, staff: await listGymStaff(client, gymId) };
   } catch (error) {
@@ -81,7 +84,7 @@ export async function loadBookingsPage(
   client: AppSupabaseClient,
   gymId: string,
   nowIso: string,
-): Promise<Loaded<{ upcoming: BookingDetailsRow[]; past: BookingDetailsRow[] }>> {
+): Promise<Loaded<{ upcoming: GymBookingRow[]; past: GymBookingRow[] }>> {
   try {
     const [upcoming, past] = await Promise.all([
       listGymBookings(client, { gymId, when: "upcoming", fromIso: nowIso }),

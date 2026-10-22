@@ -209,7 +209,8 @@ export type CancelledBy = "client" | "trainer" | "admin";
 export type BookingRow = {
   id: string;
   client_id: string;
-  trainer_id: string;
+  /** Null on a gym booking until the gym allots a trainer (20261022035524). */
+  trainer_id: string | null;
   service_id: string | null;
   service_title: string;
   mode: SessionMode;
@@ -256,7 +257,8 @@ export type AdminBookingListRow = {
   id: string;
   client_id: string;
   client_name: string | null;
-  trainer_id: string;
+  /** Null on a gym booking until the gym allots a trainer. */
+  trainer_id: string | null;
   trainer_name: string | null;
   mode: SessionMode;
   start_at: string;
@@ -365,9 +367,10 @@ export type GymRequestRow = {
 };
 
 /**
- * The columns of public.booking_details (security invoker) the gym pages read. A gym
- * manager sees the gym's bookings through bookings_select_gym_manager; names come from
- * private.display_name, which admits the gym's clients and staff for its managers.
+ * The columns of public.booking_details (security invoker) the panel reads. A gym manager
+ * sees the gym's bookings through bookings_select_gym_manager, an admin every booking through
+ * bookings_select_admin; names come from private.display_name, which admits the gym's clients
+ * and staff for its managers. The gym name and address come from private.booking_gym.
  */
 export type BookingDetailsRow = {
   id: string;
@@ -382,6 +385,8 @@ export type BookingDetailsRow = {
   client_name: string | null;
   trainer_name: string | null;
   gym_id: string | null;
+  gym_name: string | null;
+  gym_address_text: string | null;
 };
 
 /** One row of admin_list_reviews (20261019000500), needs reviews.moderate. */
@@ -1072,8 +1077,9 @@ export type Database = {
       };
       /*
        * Gyms (20261022035524_gyms.sql). jsonb replies are validated with Zod in
-       * src/lib/db/gyms.ts. admin_* need gyms.read (reads) or gyms.manage (writes); gym_*
-       * need an active manager row for the gym (BRPRM otherwise), not a permission key.
+       * src/lib/db/gyms-admin.ts and gyms-manager.ts. admin_* need gyms.read (reads) or
+       * gyms.manage (writes); gym_* need an active manager row for the gym (BRPRM otherwise),
+       * not a permission key.
        */
       admin_list_gyms: {
         Args: {
@@ -1118,6 +1124,19 @@ export type Database = {
       gym_list_requests: {
         Args: { p_gym: string };
         Returns: GymRequestRow[];
+      };
+      /** jsonb array of private.gym_staff_json (with names), active and invited rows (20261022050347). */
+      gym_list_staff: {
+        Args: { p_gym: string };
+        Returns: Json;
+      };
+      /**
+       * Returns the booking_details row. On a gym booking only a manager of that gym may answer
+       * (require_gym_manager); BRSLT when the asked time has gone.
+       */
+      respond_to_reschedule: {
+        Args: { p_id: string; p_accept: boolean };
+        Returns: Json;
       };
       gym_allot_trainer: {
         Args: { p_booking: string; p_trainer_user: string };

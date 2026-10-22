@@ -5,14 +5,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { formatDateTime } from "@/features/applications/format";
 import { STAFF_ROLE_LABELS, STAFF_STATUS_LABELS, staffStatusTone } from "@/features/gyms/format";
 import { RemoveStaffButton } from "@/features/my-gym/components/remove-staff-button";
+import { staffDisplayName } from "@/features/my-gym/format";
 import { describePhone } from "@/features/users/format";
-import type { GymStaffRow } from "@/types/database";
+import type { GymStaffMember } from "@/lib/db/gyms-manager";
 
 /**
- * The gym's managers and trainers with invites, read as the manager (gym_staff rows, which
- * carry the phone but no name). Removed staff are listed last without an action.
+ * The gym's managers and trainers with invites, read as the manager through gym_list_staff:
+ * name (once the invite has bound to an account), phone, role and status. Removed staff,
+ * should a row come back, are listed last without an action.
  */
-export function StaffList({ staff, selfUserId }: { staff: readonly GymStaffRow[]; selfUserId: string }) {
+export function StaffList({ staff, selfUserId }: { staff: readonly GymStaffMember[]; selfUserId: string }) {
   if (staff.length === 0) {
     return <EmptyState icon={Users} title="No staff yet" description="Invite your trainers by their mobile numbers." />;
   }
@@ -24,6 +26,7 @@ export function StaffList({ staff, selfUserId }: { staff: readonly GymStaffRow[]
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead>Name</TableHead>
             <TableHead>Phone</TableHead>
             <TableHead>Role</TableHead>
             <TableHead>Status</TableHead>
@@ -38,11 +41,15 @@ export function StaffList({ staff, selfUserId }: { staff: readonly GymStaffRow[]
           {ordered.map((member) => {
             const phone = describePhone(member.phone);
             const self = member.user_id !== null && member.user_id === selfUserId;
+            const name = member.name?.trim() || null;
             return (
               <TableRow key={member.id}>
+                <TableCell className="font-medium">
+                  {name ?? <span className="font-normal text-muted-foreground">Joins on sign-in</span>}
+                  {self ? <span className="ml-2 text-xs font-normal text-muted-foreground">(you)</span> : null}
+                </TableCell>
                 <TableCell>
                   <span aria-label={phone.label}>{phone.text}</span>
-                  {self ? <span className="ml-2 text-xs text-muted-foreground">(you)</span> : null}
                 </TableCell>
                 <TableCell>{STAFF_ROLE_LABELS[member.role]}</TableCell>
                 <TableCell>
@@ -58,7 +65,7 @@ export function StaffList({ staff, selfUserId }: { staff: readonly GymStaffRow[]
                   {member.status !== "removed" ? (
                     <RemoveStaffButton
                       staffId={member.id}
-                      label={`${STAFF_ROLE_LABELS[member.role].toLowerCase()} ${phone.text}`}
+                      label={`${STAFF_ROLE_LABELS[member.role].toLowerCase()} ${staffDisplayName(member)}`}
                     />
                   ) : null}
                 </TableCell>

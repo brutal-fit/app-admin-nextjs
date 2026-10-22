@@ -3,8 +3,9 @@
  * Reads run with the admin's session: admin_list_bookings and admin_get_booking need
  * bookings.read, and admin_get_booking adds the session address only for a caller holding
  * bookings.address (20261019000800); the trainer count scan reads bookings through
- * bookings_select_admin. admin_cancel_booking and admin_resolve_dispute check bookings.cancel.
- * Every wrapper throws AppError on failure.
+ * bookings_select_admin, and the gym of a gym booking comes from booking_details (security
+ * invoker, so the same policy). admin_cancel_booking and admin_resolve_dispute check
+ * bookings.cancel. Every wrapper throws AppError on failure.
  */
 import { z } from "zod";
 import { AppError, toAppError } from "@/lib/supabase/errors";
@@ -19,7 +20,7 @@ import type {
   SessionMode,
 } from "@/types/database";
 
-const TABLE = { bookings: "bookings" } as const;
+const TABLE = { bookings: "bookings", bookingDetails: "booking_details" } as const;
 
 const RPC = {
   list: "admin_list_bookings",
@@ -140,7 +141,8 @@ const text = z.string().nullable().optional();
 const bookingRowSchema = z.object({
   id: z.string(),
   client_id: z.string(),
-  trainer_id: z.string(),
+  // Null on a gym booking until the gym allots a trainer.
+  trainer_id: z.string().nullable(),
   service_id: z.string().nullable(),
   service_title: z.string(),
   mode: z.enum(["home", "online"]),
@@ -160,6 +162,8 @@ const bookingRowSchema = z.object({
   dispute_resolved_by: text,
   // Optional so a reply from before the live-location migration still parses.
   arrived_at: text,
+  // Set on a gym booking (20261022035524); optional so an older reply still parses.
+  gym_id: text,
   created_at: z.string(),
   updated_at: z.string(),
 });
@@ -210,7 +214,10 @@ export type BookingAddress = { visible: true; text: string | null } | { visible:
 
 export type BookingDetail = {
   booking: BookingRow;
+  /** The gym of a gym booking; null for a booking with an independent trainer. */
+  gymId: string | null;
   client: BookingParty | null;
+  /** Null on a gym booking the gym has not allotted yet. */
   trainer: BookingParty | null;
   /** Who cancelled, read by the server from the column or the reason it wrote; null unless cancelled. */
   cancelledBy: CancelledBy | "unknown" | null;
@@ -236,19 +243,21 @@ export async function getBookingDetail(client: AppSupabaseClient, id: string): P
     throw new AppError("UNKNOWN", "The booking came back in a shape the panel does not know.");
   }
   const detail = parsed.data;
+  const { gym_id: gymId, ...booking } = detail.booking;
   const party = (value: z.output<typeof partySchema>): BookingParty | null =>
     value
       ? { id: value.id, name: value.name ?? null, avatar: toAvatarRef(value.avatar_path, value.avatar_preset) }
       : null;
   return {
     booking: {
-      ...detail.booking,
-      cancelled_by: detail.booking.cancelled_by ?? null,
-      dispute_note: detail.booking.dispute_note ?? null,
-      dispute_resolved_at: detail.booking.dispute_resolved_at ?? null,
-      dispute_resolved_by: detail.booking.dispute_resolved_by ?? null,
-      arrived_at: detail.booking.arrived_at ?? null,
+      ...booking,
+      cancelled_by: booking.cancelled_by ?? null,
+      dispute_note: booking.dispute_note ?? null,
+      dispute_resolved_at: booking.dispute_resolved_at ?? null,
+      dispute_resolved_by: booking.dispute_resolved_by ?? null,
+      arrived_at: booking.arrived_at ?? null,
     },
+    gymId: gymId ?? null,
     client: party(detail.client),
     trainer: party(detail.trainer),
     cancelledBy: detail.cancelled_by ?? null,
@@ -287,8 +296,37 @@ export async function countBookingsByTrainer(
     .limit(BOOKING_COUNT_SCAN_LIMIT);
   if (error) throw toAppError(error);
   const counts = new Map<string, number>();
-  for (const row of data) counts.set(row.trainer_id, (counts.get(row.trainer_id) ?? 0) + 1);
+  for (const row of data) {
+    if (row.trainer_id) counts.set(row.trainer_id, (counts.get(row.trainer_id) ?? 0) + 1);
+  }
   return { counts, capped: data.length >= BOOKING_COUNT_SCAN_LIMIT };
+}
+
+export type BookingGym = { gymId: string; name: string; addressText: string | null };
+
+/**
+ * The gym behind each of the given bookings that has one, keyed by booking id. Neither
+ * admin_list_bookings nor admin_get_booking names the gym, so its name and address come from
+ * booking_details; a booking without a gym is left out.
+ */
+export async function listBookingGyms(
+  client: AppSupabaseClient,
+  bookingIds: readonly string[],
+): Promise<Map<string, BookingGym>> {
+  const gyms = new Map<string, BookingGym>();
+  if (bookingIds.length === 0) return gyms;
+  const { data, error } = await client
+    .from(TABLE.bookingDetails)
+    .select("id, gym_id, gym_name, gym_address_text")
+    .in("id", [...bookingIds])
+    .not("gym_id", "is", null);
+  if (error) throw toAppError(error);
+  for (const row of data) {
+    if (row.gym_id && row.gym_name) {
+      gyms.set(row.id, { gymId: row.gym_id, name: row.gym_name, addressText: row.gym_address_text });
+    }
+  }
+  return gyms;
 }
 
 /** Cancels on behalf of BRUTAL (requested, confirmed or reschedule requested only). */

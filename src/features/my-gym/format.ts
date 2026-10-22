@@ -1,20 +1,26 @@
 /*
- * Pure helpers for the gym manager area: who can be allotted, how hours are checked before
- * saving, how a request reads. No data access, so the rules are testable with plain values.
+ * Pure helpers for the gym manager area: who can be allotted, how staff and requests read, how
+ * hours are checked before saving. No data access, so the rules are testable with plain values.
  */
 import { describePhone } from "@/features/users/format";
-import type { GymStaffRow } from "@/types/database";
+import type { GymStaffMember } from "@/lib/db/gyms-manager";
 
-export type TrainerOption = { userId: string; label: string };
+/** A trainer to pick: the name, and the phone as secondary text (null when it is the label). */
+export type TrainerOption = { userId: string; label: string; detail: string | null };
+
+/** How a staff member reads: the name, or the phone until the invite binds to an account. */
+export function staffDisplayName(member: Pick<GymStaffMember, "name" | "phone">): string {
+  const name = member.name?.trim();
+  return name ? name : describePhone(member.phone).text;
+}
 
 /**
  * The people a request can be allotted to: the gym's own trainers whose invite has bound to an
  * account and who are still active. Managers, pending invites and removed staff are left out;
- * gym_allot_trainer refuses anyone else with BRVAL. Labelled by phone, since gym staff rows
- * carry no name.
+ * gym_allot_trainer refuses anyone else with BRVAL. Labelled by name with the phone beside it.
  */
 export function allotCandidates(
-  staff: readonly Pick<GymStaffRow, "user_id" | "phone" | "role" | "status">[],
+  staff: readonly Pick<GymStaffMember, "user_id" | "name" | "phone" | "role" | "status">[],
   exclude: string | null = null,
 ): TrainerOption[] {
   const options: TrainerOption[] = [];
@@ -22,7 +28,9 @@ export function allotCandidates(
     if (member.role !== "trainer" || member.status !== "active" || !member.user_id) continue;
     if (member.user_id === exclude) continue;
     if (options.some((option) => option.userId === member.user_id)) continue;
-    options.push({ userId: member.user_id, label: describePhone(member.phone).text });
+    const phone = describePhone(member.phone).text;
+    const label = staffDisplayName(member);
+    options.push({ userId: member.user_id, label, detail: label === phone ? null : phone });
   }
   return options;
 }
@@ -51,4 +59,9 @@ export function hoursProblem(windows: readonly HoursWindowInput[]): string | nul
 /** What the platform price line says for a service. */
 export function platformPriceText(priceInr: number | null): string {
   return priceInr === null ? "Awaiting BRUTAL approval" : `INR ${priceInr.toLocaleString("en-IN")}`;
+}
+
+/** The end of an asked reschedule time: the asked start plus the session length. */
+export function requestedEndIso(requestedStartIso: string, durationMinutes: number): string {
+  return new Date(new Date(requestedStartIso).getTime() + durationMinutes * 60_000).toISOString();
 }

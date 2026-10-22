@@ -6,7 +6,7 @@ import { MODE_LABELS } from "@/features/applications/schemas";
 import { PaymentStatusBadge } from "@/features/bookings/components/payment-status-badge";
 import { CANCELLED_BY_LABELS } from "@/features/bookings/schemas";
 import { permittedHref } from "@/features/support/format";
-import type { BookingDetail as BookingDetailData } from "@/lib/db/bookings";
+import type { BookingDetail as BookingDetailData, BookingGym } from "@/lib/db/bookings";
 import type { AvatarRef } from "@/lib/utils/avatar";
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
@@ -44,24 +44,61 @@ function Card({ id, title, children }: { id: string; title: string; children: Re
   );
 }
 
+/** The gym of a gym booking: name (linked with gyms.read), address, and whether it has allotted. */
+function GymBlock({
+  gym,
+  allotted,
+  permissions,
+}: {
+  gym: BookingGym | null;
+  allotted: boolean;
+  permissions: readonly string[];
+}) {
+  const href = gym ? permittedHref(permissions, `/gyms/${gym.gymId}`) : null;
+  return (
+    <span className="flex flex-col gap-0.5">
+      {gym ? (
+        href ? (
+          <Link href={href} className="focus-ring rounded-sm font-medium underline-offset-4 hover:underline">
+            {gym.name}
+          </Link>
+        ) : (
+          <span className="font-medium">{gym.name}</span>
+        )
+      ) : (
+        <span className="text-muted-foreground">Gym name unavailable</span>
+      )}
+      {gym?.addressText ? <span className="text-muted-foreground">{gym.addressText}</span> : null}
+      {allotted ? null : (
+        <span className="text-xs text-muted-foreground">Awaiting gym allotment: the gym picks the trainer.</span>
+      )}
+    </span>
+  );
+}
+
 /**
  * The parties with links (each only when the session may open the page), the service, the
  * price snapshot taken at request time, payment status and how the booking was cancelled.
+ * A gym booking shows its gym; until the gym allots a trainer there is no trainer row.
  * Gated by bookings.read.
  */
 export function BookingDetail({
   detail,
+  gym = null,
   permissions,
 }: {
   detail: BookingDetailData;
+  /** The gym behind a gym booking (booking_details); null for an independent trainer. */
+  gym?: BookingGym | null;
   permissions: readonly string[];
 }) {
   const { booking, cancelledBy } = detail;
   const clientName = detail.client?.name || "Unnamed";
   const trainerName = detail.trainer?.name || "Unnamed";
-  const trainerHref =
-    permittedHref(permissions, `/trainers/${booking.trainer_id}`) ??
-    permittedHref(permissions, `/users/${booking.trainer_id}`);
+  const trainerId = booking.trainer_id;
+  const trainerHref = trainerId
+    ? (permittedHref(permissions, `/trainers/${trainerId}`) ?? permittedHref(permissions, `/users/${trainerId}`))
+    : null;
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -74,9 +111,16 @@ export function BookingDetail({
               avatar={detail.client?.avatar ?? null}
             />
           </Row>
-          <Row label="Trainer">
-            <Party href={trainerHref} name={trainerName} avatar={detail.trainer?.avatar ?? null} />
-          </Row>
+          {trainerId ? (
+            <Row label="Trainer">
+              <Party href={trainerHref} name={trainerName} avatar={detail.trainer?.avatar ?? null} />
+            </Row>
+          ) : null}
+          {detail.gymId ? (
+            <Row label="Gym">
+              <GymBlock gym={gym} allotted={trainerId !== null} permissions={permissions} />
+            </Row>
+          ) : null}
         </dl>
       </Card>
       <Card id="booking-money" title="Service and payment">

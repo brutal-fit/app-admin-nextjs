@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
 import {
   Activity,
@@ -68,6 +68,17 @@ function activeHref(items: readonly SidebarNavItem[], pathname: string): string 
   return best;
 }
 
+const GYM_AREA = "/my-gym";
+
+/**
+ * The href to link: a my-gym page keeps the gym chosen with `?gym=` when the session manages
+ * several gyms, so moving between the gym pages does not fall back to the first gym.
+ */
+export function navHref(href: string, gymParam: string | null, keepGym: boolean): string {
+  const gymPage = href === GYM_AREA || href.startsWith(`${GYM_AREA}/`);
+  return keepGym && gymParam && gymPage ? `${href}?gym=${encodeURIComponent(gymParam)}` : href;
+}
+
 type NavGroup = { section: string | null; items: SidebarNavItem[] };
 
 // Unsectioned items first, then one group per section in first-seen order.
@@ -88,11 +99,15 @@ function groupItems(items: readonly SidebarNavItem[]): NavGroup[] {
 export function SidebarNav({
   items,
   orientation = "vertical",
+  keepGym = false,
 }: {
   items: SidebarNavItem[];
   orientation?: "vertical" | "horizontal";
+  /** True when the session manages more than one gym: my-gym links carry `?gym=`. */
+  keepGym?: boolean;
 }) {
   const pathname = usePathname();
+  const gymParam = useSearchParams().get("gym");
   const reduce = usePrefersReducedMotion();
   const vertical = orientation === "vertical";
   const current = activeHref(items, pathname);
@@ -132,7 +147,7 @@ export function SidebarNav({
                       </motion.span>
                     ) : null}
                     <Link
-                      href={item.href}
+                      href={navHref(item.href, gymParam, keepGym)}
                       aria-current={active ? "page" : undefined}
                       className={cn(
                         "focus-ring relative flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",

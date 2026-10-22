@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { describePhone } from "@/features/users/format";
-import type { Gym } from "@/lib/db/gyms";
+import type { Gym } from "@/lib/db/gyms-manager";
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (

@@ -34,7 +34,7 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
     );
   }
 
-  const { detail, address } = result;
+  const { detail, address, gym } = result;
   const { booking, dispute } = detail;
   const cancellable = isCancellable(booking.status);
   const resolvable = canResolveDispute(booking.status, booking.dispute_resolved_at);
@@ -54,7 +54,7 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
         description={<p>{formatSessionRange(booking.start_at, booking.end_at)}, India time.</p>}
       />
 
-      <BookingDetail detail={detail} permissions={access.permissions} />
+      <BookingDetail detail={detail} gym={gym} permissions={access.permissions} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <BookingTimeline

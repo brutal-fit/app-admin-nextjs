@@ -14,7 +14,7 @@ import {
 } from "@/features/gyms/schemas";
 import { updateGymProfileAction } from "@/features/my-gym/actions";
 import { updateGymProfileSchema } from "@/features/my-gym/schemas";
-import type { Gym } from "@/lib/db/gyms";
+import type { Gym } from "@/lib/db/gyms-manager";
 import { showToast } from "@/stores/toast-store";
 
 const FIELDS = ["name", "tagline", "description", "addressText", "area", "city", "lat", "lng", "facilities", "phone"] as const;

@@ -1,7 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { createGym, setGymListed, setGymServicePrice, verifyGym } from "@/lib/db/gyms";
+import { createGym, setGymListed, setGymServicePrice, verifyGym } from "@/lib/db/gyms-admin";
 import { runAction } from "@/server/run-action";
 import {
   createGymSchema,

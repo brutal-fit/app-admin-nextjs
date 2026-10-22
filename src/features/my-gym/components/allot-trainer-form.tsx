@@ -11,10 +11,10 @@ import { allotTrainerSchema } from "@/features/my-gym/schemas";
 import { showToast } from "@/stores/toast-store";
 
 /**
- * Picks a trainer from the gym's own active trainers (the options come from allotCandidates,
- * never a free entry) and allots them to a request through gym_allot_trainer, which confirms
- * it; or, for a confirmed session that has not started, reassigns it through
- * gym_reassign_trainer. The server refuses anyone outside the gym's active staff. Gated by
+ * Picks a trainer from the gym's own active trainers by name, the phone beside it (the options
+ * come from allotCandidates, never a free entry) and allots them to a request through
+ * gym_allot_trainer, which confirms it; or, for a confirmed session that has not started,
+ * reassigns it through gym_reassign_trainer. The server refuses anyone outside the gym's active staff. Gated by
  * gym.self and the gym's manager row.
  */
 export function AllotTrainerForm({
@@ -66,13 +66,14 @@ export function AllotTrainerForm({
         <div className="flex flex-col gap-1.5">
           <Label htmlFor={id}>{kind === "allot" ? "Trainer" : "New trainer"}</Label>
           <Select value={trainer} onValueChange={setTrainer} disabled={pending}>
-            <SelectTrigger id={id} className="w-56">
+            <SelectTrigger id={id} className="w-72 max-w-full">
               <SelectValue placeholder="Pick from your staff" />
             </SelectTrigger>
             <SelectContent>
               {options.map((option) => (
                 <SelectItem key={option.userId} value={option.userId}>
-                  {option.label}
+                  <span>{option.label}</span>
+                  {option.detail ? <span className="text-xs text-muted-foreground">{option.detail}</span> : null}
                 </SelectItem>
               ))}
             </SelectContent>

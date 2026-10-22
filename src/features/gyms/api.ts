@@ -2,7 +2,7 @@
  * Server-side loaders for the BRUTAL gym pages (gyms.read). Each returns a result the page
  * renders as is: rows or the gym, or the error in words.
  */
-import { getAdminGym, listGyms, type AdminGymDetail } from "@/lib/db/gyms";
+import { getAdminGym, listGyms, type AdminGymDetail } from "@/lib/db/gyms-admin";
 import { toAppError } from "@/lib/supabase/errors";
 import type { AppSupabaseClient } from "@/lib/supabase/server";
 import type { AdminGymListRow } from "@/types/database";

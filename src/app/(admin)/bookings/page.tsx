@@ -44,6 +44,7 @@ export default async function BookingsPage({
           <BookingTable
             rows={result.rows}
             avatars={result.avatars}
+            gymNames={result.gymNames}
             filtered={hasBookingFilters(filters) || filters.page > 1}
             usersVisible={can(access.permissions, "users.read")}
             trainersVisible={can(access.permissions, "applications.read")}

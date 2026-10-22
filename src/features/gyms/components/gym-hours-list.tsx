@@ -1,5 +1,5 @@
 import { summariseHours } from "@/features/gyms/format";
-import type { GymHoursWindow } from "@/lib/db/gyms";
+import type { GymHoursWindow } from "@/lib/db/gyms-manager";
 
 /** Opening hours by weekday in India time; days without a window are closed. */
 export function GymHoursList({ hours }: { hours: readonly GymHoursWindow[] }) {

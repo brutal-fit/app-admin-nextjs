@@ -5,8 +5,7 @@ import { formatInr } from "@/features/applications/format";
 import { BookingStatusBadge } from "@/features/bookings/components/booking-status-badge";
 import { formatSessionRange } from "@/features/bookings/format";
 import { firstName } from "@/features/gyms/format";
-import { GYM_BOOKINGS_MAX } from "@/lib/db/gyms";
-import type { BookingDetailsRow } from "@/types/database";
+import { GYM_BOOKINGS_MAX, type GymBookingRow } from "@/lib/db/gyms-manager";
 
 const MODE = { home: "At the gym", online: "Online" } as const;
 
@@ -16,7 +15,7 @@ export function MyGymBookingList({
   caption,
   emptyText,
 }: {
-  bookings: readonly BookingDetailsRow[];
+  bookings: readonly GymBookingRow[];
   caption: string;
   emptyText: string;
 }) {

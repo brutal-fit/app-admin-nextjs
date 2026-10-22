@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { WEEKDAY_LABELS, formatMinute, parseMinute } from "@/features/gyms/format";
 import { setGymHoursAction } from "@/features/my-gym/actions";
 import { HOURS_WINDOWS_MAX, setGymHoursSchema } from "@/features/my-gym/schemas";
-import type { GymHoursWindow } from "@/lib/db/gyms";
+import type { GymHoursWindow } from "@/lib/db/gyms-manager";
 import { showToast } from "@/stores/toast-store";
 
 type Draft = { key: number; weekday: number; start: string; end: string };

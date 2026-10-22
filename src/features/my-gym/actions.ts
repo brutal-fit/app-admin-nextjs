@@ -9,11 +9,12 @@ import {
   reassignTrainer,
   removeGymPhotoFiles,
   removeGymStaff,
+  respondToReschedule,
   setGymHours,
   setGymService,
   submitGymForReview,
   updateGymProfile,
-} from "@/lib/db/gyms";
+} from "@/lib/db/gyms-manager";
 import { AppError } from "@/lib/supabase/errors";
 import { runAction } from "@/server/run-action";
 import {
@@ -25,6 +26,7 @@ import {
   inviteStaffSchema,
   removeGymPhotoSchema,
   removeStaffSchema,
+  respondToRescheduleSchema,
   setGymHoursSchema,
   submitGymSchema,
   toProfileFields,
@@ -123,6 +125,19 @@ export async function allotTrainerAction(input: unknown): Promise<ActionResult> 
 export async function declineRequestAction(input: unknown): Promise<ActionResult> {
   return runAction(declineRequestSchema, input, "gym.self", async (data, { supabase }) => {
     await declineRequest(supabase, data.bookingId, data.reason);
+    refresh();
+    return undefined;
+  });
+}
+
+/**
+ * Answers a client's reschedule request on a gym booking. respond_to_reschedule admits only an
+ * active manager of the booking's gym (require_gym_manager), so a manager of another gym gets
+ * BRPRM; the allotted trainer is told by the server.
+ */
+export async function respondToRescheduleAction(input: unknown): Promise<ActionResult> {
+  return runAction(respondToRescheduleSchema, input, "gym.self", async (data, { supabase }) => {
+    await respondToReschedule(supabase, data.bookingId, data.accept);
     refresh();
     return undefined;
   });

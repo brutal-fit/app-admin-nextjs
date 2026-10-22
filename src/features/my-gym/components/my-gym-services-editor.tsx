@@ -17,7 +17,7 @@ import {
   SERVICE_TITLE_MAX,
   gymServiceFormSchema,
 } from "@/features/my-gym/schemas";
-import type { GymService } from "@/lib/db/gyms";
+import type { GymService } from "@/lib/db/gyms-manager";
 import { showToast } from "@/stores/toast-store";
 
 const MODE_LABELS = { home: "At the gym", online: "Online" } as const;

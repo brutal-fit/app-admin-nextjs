@@ -6,7 +6,7 @@ import { Trash2, Upload } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { addGymPhotoAction, removeGymPhotoAction } from "@/features/my-gym/actions";
 import { PHOTOS_MAX, PHOTO_BYTES_MAX, PHOTO_TYPES } from "@/features/my-gym/schemas";
-import { gymPhotoUrl, removeGymPhotoFiles, uploadGymPhoto } from "@/lib/db/gyms";
+import { gymPhotoUrl, removeGymPhotoFiles, uploadGymPhoto } from "@/lib/db/gyms-manager";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { readSupabasePublicEnv } from "@/lib/supabase/env";
 import { toAppError } from "@/lib/supabase/errors";

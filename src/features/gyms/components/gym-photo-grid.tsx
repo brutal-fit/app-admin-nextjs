@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { gymPhotoUrl } from "@/lib/db/gyms";
+import { gymPhotoUrl } from "@/lib/db/gyms-manager";
 import { readSupabasePublicEnv } from "@/lib/supabase/env";
 
 /** The gym's photos from the public gym-photos bucket, first one being the cover. */
