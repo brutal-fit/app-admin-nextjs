@@ -5,6 +5,7 @@ import {
   AUDIT_SEARCH_MAX,
   EMPTY_AUDIT_FILTERS,
   auditActionLabel,
+  auditRowLabel,
   auditExportFileName,
   auditExportHref,
   auditListHref,
@@ -130,5 +131,57 @@ describe("helpers", () => {
     for (const action of AUDIT_ACTIONS) expect(AUDIT_ACTION_LABELS[action]).toBeTruthy();
     expect(auditActionLabel("create_role")).toBe("Role created");
     expect(auditActionLabel("mystery.action")).toBe("mystery.action");
+  });
+});
+
+describe("gym actions and row labels", () => {
+  it("lists and labels the gym actions the backend writes", () => {
+    for (const action of [
+      "gym.create",
+      "gym.verify",
+      "gym.listed",
+      "gym.service_price",
+      "gym.allot",
+      "gym.decline",
+      "gym.reassign",
+    ]) {
+      expect(AUDIT_ACTIONS as readonly string[]).toContain(action);
+      expect(auditActionLabel(action)).not.toBe(action);
+    }
+    expect(auditActionLabel("gym.service_price")).toBe("Gym service price set");
+  });
+
+  it("reads a trainer listing toggle as listed or unlisted", () => {
+    const toggle = (published: boolean) => ({
+      action: "trainer.update",
+      details: { keys: ["published"], from: { published: !published }, to: { published } },
+    });
+    expect(auditRowLabel(toggle(false))).toBe("Trainer unlisted");
+    expect(auditRowLabel(toggle(true))).toBe("Trainer listed");
+  });
+
+  it("keeps the edit label when more than the listing changed", () => {
+    expect(
+      auditRowLabel({
+        action: "trainer.update",
+        details: { keys: ["bio", "published"], from: {}, to: { bio: "x", published: true } },
+      }),
+    ).toBe("Trainer profile edited");
+    expect(auditRowLabel({ action: "trainer.update", details: { keys: ["bio"] } })).toBe("Trainer profile edited");
+    expect(auditRowLabel({ action: "trainer.update", details: null })).toBe("Trainer profile edited");
+  });
+
+  it("reads gym listing and verification from their detail", () => {
+    expect(auditRowLabel({ action: "gym.listed", details: { listed: true } })).toBe("Gym listed");
+    expect(auditRowLabel({ action: "gym.listed", details: { listed: false } })).toBe("Gym unlisted");
+    expect(auditRowLabel({ action: "gym.listed", details: {} })).toBe("Gym listing changed");
+    expect(auditRowLabel({ action: "gym.verify", details: { decision: "verified" } })).toBe("Gym verified");
+    expect(auditRowLabel({ action: "gym.verify", details: { decision: "suspended" } })).toBe("Gym suspended");
+    expect(auditRowLabel({ action: "gym.verify", details: { decision: "odd" } })).toBe("Gym status changed");
+  });
+
+  it("falls back to the action label, or the raw action when unknown", () => {
+    expect(auditRowLabel({ action: "booking.cancel", details: {} })).toBe("Booking cancelled");
+    expect(auditRowLabel({ action: "mystery.action", details: {} })).toBe("mystery.action");
   });
 });

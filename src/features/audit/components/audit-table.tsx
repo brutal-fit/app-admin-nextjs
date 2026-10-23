@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table";
 import { formatDateTime } from "@/features/applications/format";
 import { auditTarget, formatAuditDetails, hasAuditDetails } from "@/features/audit/format";
-import { auditActionLabel, auditListHref, type AuditFilters } from "@/features/audit/schemas";
+import { auditListHref, auditRowLabel, type AuditFilters } from "@/features/audit/schemas";
 import type { AdminAuditListRow } from "@/types/database";
 
 const filterLinkClass =
@@ -82,7 +82,7 @@ export function AuditTable({
                 </TableCell>
                 <TableCell>
                   <span className="flex flex-col">
-                    <span>{auditActionLabel(row.action)}</span>
+                    <span>{auditRowLabel(row)}</span>
                     <span className="font-mono text-xs text-muted-foreground">{row.action}</span>
                   </span>
                 </TableCell>

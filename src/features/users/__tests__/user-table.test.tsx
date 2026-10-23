@@ -1,5 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import { formatDateTime } from "@/features/applications/format";
 import { UserTable } from "@/features/users/components/user-table";
 import type { AdminUserRow } from "@/types/database";
 
@@ -27,8 +28,8 @@ describe("UserTable", () => {
     render(<UserTable users={[user({ roles: ["ops"] })]} />);
     expect(screen.getByRole("link", { name: "Asha Rao" }).getAttribute("href")).toBe("/users/u1");
     expect(screen.getByText("asha@example.com")).toBeTruthy();
-    expect(screen.getByText("active")).toBeTruthy();
-    expect(screen.getByText("ops")).toBeTruthy();
+    expect(screen.getByText("Active")).toBeTruthy();
+    expect(screen.getByText("Ops")).toBeTruthy();
   });
 
   it("falls back for missing name, email and role", () => {
@@ -39,7 +40,7 @@ describe("UserTable", () => {
     );
     expect(screen.getByText("Unnamed")).toBeTruthy();
     expect(screen.getByText("No email")).toBeTruthy();
-    expect(screen.getByText("suspended")).toBeTruthy();
+    expect(screen.getByText("Suspended")).toBeTruthy();
   });
 
   it("shows a full phone formatted (users.manage)", () => {
@@ -64,5 +65,29 @@ describe("UserTable", () => {
     );
     expect(screen.getByText("No phone")).toBeTruthy();
     expect(screen.getByText("Not loaded")).toBeTruthy();
+  });
+
+  it("labels the platform role and names admin roles from the roles table", () => {
+    render(
+      <UserTable
+        users={[user({ platform_role: "trainer", roles: ["gym_manager", "support"] })]}
+        roleNames={{ support: "Support agent" }}
+      />,
+    );
+    expect(screen.getByText("Trainer")).toBeTruthy();
+    expect(screen.getByText("Support agent")).toBeTruthy();
+    // A key the page did not load a name for still reads as words, never as the raw key.
+    expect(screen.getByText("Gym manager")).toBeTruthy();
+    expect(screen.queryByText("gym_manager")).toBeNull();
+    expect(screen.queryByText("trainer")).toBeNull();
+  });
+
+  it("prints the joined date with the shared date formatter", () => {
+    const joined = "2026-10-22T11:17:00Z";
+    render(<UserTable users={[user({ created_at: joined })]} />);
+    const time = screen.getByText(formatDateTime(joined));
+    expect(time.tagName).toBe("TIME");
+    expect(time.getAttribute("datetime")).toBe(joined);
+    expect(screen.queryByText("22/10/2026")).toBeNull();
   });
 });

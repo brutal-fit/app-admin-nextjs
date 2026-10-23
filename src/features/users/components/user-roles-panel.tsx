@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { formatDateTime } from "@/features/applications/format";
 import { assignRoleAction, revokeRoleAction } from "@/features/users/actions";
 import { showToast } from "@/stores/toast-store";
 
@@ -81,7 +82,7 @@ export function UserRolesPanel({
                   ) : null}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  Granted {new Date(role.grantedAt).toLocaleDateString("en-IN")}
+                  Granted <time dateTime={role.grantedAt}>{formatDateTime(role.grantedAt)}</time>
                 </span>
               </div>
               <Button

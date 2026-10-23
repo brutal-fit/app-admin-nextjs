@@ -46,6 +46,7 @@ export function UserSearch({
   initialUsers,
   initialAvatars = {},
   initialPhones = {},
+  roleNames = {},
   initialFilters = [],
   joinedSince,
   pageSize = USER_PAGE_SIZE,
@@ -55,6 +56,8 @@ export function UserSearch({
   initialAvatars?: UserAvatarMap;
   /** Phones the server loaded for initialUsers (masked without users.manage). */
   initialPhones?: UserPhoneMap;
+  /** Admin role names by key, so the table shows "Gym manager" rather than gym_manager. */
+  roleNames?: Readonly<Record<string, string>>;
   initialFilters?: UserFilter[];
   /** ISO timestamp seven days before the server render, for "Joined last 7 days". */
   joinedSince: string;
@@ -163,6 +166,7 @@ export function UserSearch({
         users={shown}
         avatars={avatars}
         phones={phones}
+        roleNames={roleNames}
         loading={pending}
         countLabel={(count) => {
           const noun = count === 1 ? "user" : "users";

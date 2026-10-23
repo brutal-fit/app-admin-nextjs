@@ -11,7 +11,10 @@ import { UserEnrolments } from "@/features/users/components/user-enrolments";
 import { UserOverview } from "@/features/users/components/user-overview";
 import { UserPrivacyRequests } from "@/features/users/components/user-privacy-requests";
 import { UserRolesPanel, type AssignedRole } from "@/features/users/components/user-roles-panel";
+import { formatDateTime } from "@/features/applications/format";
 import {
+  ACCOUNT_STATUS_LABELS,
+  PLATFORM_ROLE_LABELS,
   accountStatusTone,
   describePhone,
   missingPermissionMessage,
@@ -95,7 +98,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
         status={
           <StatusPulse value={detail.account_status} className={accountStatusTone(detail.account_status)}>
             <Badge variant="outline" className={accountStatusTone(detail.account_status)}>
-              {detail.account_status}
+              {ACCOUNT_STATUS_LABELS[detail.account_status]}
             </Badge>
           </StatusPulse>
         }
@@ -110,9 +113,11 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
           <dt className="text-muted-foreground">Username</dt>
           <dd>{detail.username ? `@${detail.username}` : "None"}</dd>
           <dt className="text-muted-foreground">App role</dt>
-          <dd>{detail.platform_role ?? "None"}</dd>
+          <dd>{detail.platform_role ? PLATFORM_ROLE_LABELS[detail.platform_role] : "None"}</dd>
           <dt className="text-muted-foreground">Joined</dt>
-          <dd>{new Date(detail.created_at).toLocaleDateString("en-IN")}</dd>
+          <dd>
+            <time dateTime={detail.created_at}>{formatDateTime(detail.created_at)}</time>
+          </dd>
           </dl>
         </div>
       </PageHeader>

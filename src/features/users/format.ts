@@ -4,7 +4,7 @@
  */
 import { PERMISSIONS, type PermissionKey } from "@/lib/rbac/permissions";
 import type { UserAuditEntry } from "@/lib/db/users";
-import type { AccountStatus, BookingStatus, Json, PrivacyRequestKind } from "@/types/database";
+import type { AccountStatus, BookingStatus, Json, PrivacyRequestKind, UserRole } from "@/types/database";
 
 /** Booking statuses in the order a booking moves through them, end states last. */
 export const BOOKING_STATUS_ORDER = [
@@ -36,6 +36,27 @@ export const PRIVACY_KIND_LABELS: Record<PrivacyRequestKind, string> = {
 
 /** Requests in these states are done; anything else still waits for processing. */
 export const PRIVACY_FINAL_STATUSES: readonly string[] = ["completed", "rejected"];
+
+export const ACCOUNT_STATUS_LABELS: Record<AccountStatus, string> = {
+  active: "Active",
+  suspended: "Suspended",
+};
+
+export const PLATFORM_ROLE_LABELS: Record<UserRole, string> = {
+  client: "Client",
+  trainer: "Trainer",
+};
+
+/**
+ * An admin role's display name from its key: the name from the roles table when the page
+ * loaded it, else the key in words ("gym_manager" reads "Gym manager").
+ */
+export function roleKeyLabel(key: string, names: Readonly<Record<string, string>> = {}): string {
+  const name = names[key]?.trim();
+  if (name) return name;
+  const words = key.replaceAll("_", " ").trim();
+  return words ? `${words.charAt(0).toUpperCase()}${words.slice(1)}` : key;
+}
 
 export function accountStatusTone(status: AccountStatus): string {
   return status === "active" ? "border-success text-success" : "border-destructive text-destructive";

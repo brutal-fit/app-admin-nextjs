@@ -52,6 +52,7 @@ function columns(
     {
       id: "session",
       header: "Session",
+      className: "min-w-40 whitespace-normal",
       sortValue: (row) => new Date(row.start_at).getTime(),
       cell: (row) => (
         <Link href={`/bookings/${row.id}`} className={`${linkClass} font-medium`}>
@@ -62,6 +63,7 @@ function columns(
     {
       id: "client",
       header: "Client",
+      className: "min-w-36 whitespace-normal",
       sortValue: (row) => row.client_name,
       cell: (row) => (
         <PartyLink
@@ -74,6 +76,7 @@ function columns(
     {
       id: "trainer",
       header: "Trainer",
+      className: "min-w-36 whitespace-normal",
       sortValue: (row) => row.trainer_name,
       cell: (row) =>
         row.trainer_id === null ? (

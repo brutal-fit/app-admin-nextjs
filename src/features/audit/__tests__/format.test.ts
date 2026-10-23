@@ -121,6 +121,34 @@ describe("auditTarget", () => {
     ).toBe("Announcement: Hello");
   });
 
+  it("labels a gym price row as the gym and links to its page with gyms.read", () => {
+    const priced = row({
+      action: "gym.service_price",
+      details: { service_id: "s1", title: "Personal training", ask: 1400, from: null, to: 700 },
+    });
+    expect(auditTarget(priced, [...all, "gyms.read"])).toEqual({
+      kind: "gym",
+      label: "Gym abcdef12",
+      href: `/gyms/${ID}`,
+    });
+    expect(auditTarget(priced, all)?.href).toBeNull();
+  });
+
+  it("names a created gym from its detail", () => {
+    expect(auditTarget(row({ action: "gym.create", details: { name: "Iron Republic" } }), ["gyms.read"])).toEqual({
+      kind: "gym",
+      label: "Gym Iron Republic",
+      href: `/gyms/${ID}`,
+    });
+  });
+
+  it("points a gym manager's booking actions at the booking", () => {
+    expect(auditTarget(row({ action: "gym.allot", details: { gym_id: "g1" } }), all)).toMatchObject({
+      kind: "booking",
+      href: `/bookings/${ID}`,
+    });
+  });
+
   it("knows a target kind for every listed action", () => {
     for (const action of AUDIT_ACTIONS) {
       expect(auditTarget(row({ action }), all)?.kind, action).not.toBeNull();

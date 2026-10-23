@@ -27,6 +27,7 @@ function columns(usersVisible: boolean): DataTableColumn<SupportQueueItem>[] {
     {
       id: "subject",
       header: "Subject",
+      className: "min-w-48 whitespace-normal",
       sortValue: (row) => row.subject,
       cell: (row) => (
         <div className="flex min-w-0 flex-col gap-0.5">
@@ -45,6 +46,7 @@ function columns(usersVisible: boolean): DataTableColumn<SupportQueueItem>[] {
     {
       id: "reporter",
       header: "Reporter",
+      className: "min-w-36 whitespace-normal",
       sortValue: (row) => row.reporterName,
       cell: (row) => (
         <span className="flex items-center gap-2">
@@ -77,6 +79,7 @@ function columns(usersVisible: boolean): DataTableColumn<SupportQueueItem>[] {
     {
       id: "assignee",
       header: "Assignee",
+      className: "min-w-36 whitespace-normal",
       sortValue: (row) => row.assigneeName,
       cell: (row) =>
         row.assigneeName ? (

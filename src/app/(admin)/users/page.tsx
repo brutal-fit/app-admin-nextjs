@@ -38,6 +38,7 @@ export default async function UsersPage({
     roles.status === "fulfilled"
       ? roles.value.map((role) => ({ id: role.id, name: role.name, key: role.key }))
       : [];
+  const roleNames = Object.fromEntries(assignable.map((role) => [role.key, role.name]));
 
   return (
     <div className="flex flex-col gap-6">
@@ -60,6 +61,7 @@ export default async function UsersPage({
           initialUsers={users.value}
           initialAvatars={avatars}
           initialPhones={phones}
+          roleNames={roleNames}
           initialFilters={initialFilters}
           joinedSince={daysAgoIso(7)}
           pageSize={pageSize}

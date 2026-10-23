@@ -15,7 +15,8 @@ export type AuditTargetKind =
   | "review"
   | "catalogue"
   | "setting"
-  | "announcement";
+  | "announcement"
+  | "gym";
 
 const TARGET_KIND: Readonly<Record<string, AuditTargetKind>> = {
   create_role: "role",
@@ -39,6 +40,14 @@ const TARGET_KIND: Readonly<Record<string, AuditTargetKind>> = {
   "catalogue.delete": "catalogue",
   "setting.update": "setting",
   "announcement.send": "announcement",
+  "gym.create": "gym",
+  "gym.verify": "gym",
+  "gym.listed": "gym",
+  "gym.service_price": "gym",
+  // A gym manager's booking actions target the booking; the gym is in the detail.
+  "gym.allot": "booking",
+  "gym.decline": "booking",
+  "gym.reassign": "booking",
 };
 
 const KIND_LABELS: Record<AuditTargetKind, string> = {
@@ -52,6 +61,7 @@ const KIND_LABELS: Record<AuditTargetKind, string> = {
   catalogue: "Catalogue item",
   setting: "Setting",
   announcement: "Announcement",
+  gym: "Gym",
 };
 
 export type AuditTarget = {
@@ -101,6 +111,8 @@ function hrefFor(row: AuditLogRow, kind: AuditTargetKind): string | null {
       return "/settings";
     case "announcement":
       return "/announcements";
+    case "gym":
+      return id ? `/gyms/${id}` : null;
   }
 }
 
@@ -122,6 +134,12 @@ function labelFor(row: AuditLogRow, kind: AuditTargetKind): string {
     case "announcement": {
       const title = detailText(row.details, "title");
       return title ? `${base}: ${title}` : base;
+    }
+    case "gym": {
+      // Only gym.create stores the name; the other gym actions fall back to the short id.
+      const name = detailText(row.details, "name");
+      if (name) return `${base} ${name}`;
+      return row.target_id ? `${base} ${shortId(row.target_id)}` : base;
     }
     default:
       return row.target_id ? `${base} ${shortId(row.target_id)}` : base;

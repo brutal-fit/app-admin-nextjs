@@ -6,6 +6,7 @@ vi.mock("@/features/users/actions", () => ({
   revokeRoleAction: vi.fn(),
 }));
 
+import { formatDateTime } from "@/features/applications/format";
 import { UserRolesPanel } from "@/features/users/components/user-roles-panel";
 
 afterEach(cleanup);
@@ -35,6 +36,8 @@ describe("UserRolesPanel", () => {
     expect(screen.getByText("Operations")).toBeTruthy();
     expect(screen.getByText("System")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Revoke" })).toBeTruthy();
+    // The grant date uses the shared formatter, not the browser's short date.
+    expect(screen.getByText(formatDateTime("2026-10-19T00:00:00Z")).tagName).toBe("TIME");
   });
 
   it("disables the picker when every role is assigned", () => {

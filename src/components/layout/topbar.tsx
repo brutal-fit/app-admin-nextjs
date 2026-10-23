@@ -9,6 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { useCommandStore } from "@/stores/command-store";
 import { useSessionStore } from "@/stores/session-store-provider";
+import type { SessionAccess } from "@/types/access";
+
+// One shared empty list: a selector that returned a fresh [] each call would never equal its
+// last result once access is cleared (sign out), and zustand would re-render without end.
+const NO_ROLES: SessionAccess["roles"] = [];
 
 /**
  * Breadcrumb, the global search trigger (opens the command palette), the shortcut sheet,
@@ -20,7 +25,7 @@ export function Topbar({ items, keepGym = false }: { items: SidebarNavItem[]; ke
   const setPaletteOpen = useCommandStore((state) => state.setPaletteOpen);
   const setShortcutsOpen = useCommandStore((state) => state.setShortcutsOpen);
   const fullName = useSessionStore((state) => state.access?.fullName ?? "");
-  const roles = useSessionStore((state) => state.access?.roles ?? []);
+  const roles = useSessionStore((state) => state.access?.roles ?? NO_ROLES);
 
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md">

@@ -39,6 +39,7 @@ function columns(
     {
       id: "booking",
       header: "Booking",
+      className: "min-w-40 whitespace-normal",
       sortValue: (row) => bookingOf(row)?.startAt ?? row.booking_id,
       cell: (row) => {
         const booking = bookingOf(row);
@@ -55,6 +56,7 @@ function columns(
     {
       id: "client",
       header: "Client",
+      className: "min-w-32 whitespace-normal",
       sortValue: (row) => bookingOf(row)?.clientName ?? null,
       cell: (row) => {
         if (!bookings.visible) return hidden;
@@ -73,6 +75,7 @@ function columns(
     {
       id: "provider",
       header: "Trainer or gym",
+      className: "min-w-36 whitespace-normal",
       sortValue: (row) => bookingOf(row)?.trainerName ?? bookingOf(row)?.gymName ?? null,
       cell: (row) => {
         if (!bookings.visible) return hidden;

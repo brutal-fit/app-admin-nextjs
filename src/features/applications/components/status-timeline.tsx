@@ -1,39 +1,15 @@
 import { Check } from "@/components/icons";
 import { cn } from "@/lib/utils";
-import { formatDateTime } from "@/features/applications/format";
+import { applicationTimelineSteps, formatDateTime, timelineIndex } from "@/features/applications/format";
 import type { ApplicationStatus } from "@/types/database";
-
-type Step = {
-  key: "draft" | "submitted" | "under_review" | "needs_information" | "decision";
-  label: string;
-  /** The timestamp the data has for this step, if any. */
-  at: string | null;
-  note?: string;
-};
 
 type StepState = "done" | "current" | "upcoming";
 
-const ORDER: Record<Exclude<ApplicationStatus, "approved" | "rejected" | "suspended">, number> = {
-  draft: 0,
-  submitted: 1,
-  under_review: 2,
-  needs_information: 3,
-};
-
-const DECISION_LABELS: Partial<Record<ApplicationStatus, string>> = {
-  approved: "Approved",
-  rejected: "Rejected",
-  suspended: "Suspended",
-};
-
-function currentIndex(status: ApplicationStatus): number {
-  return status in ORDER ? ORDER[status as keyof typeof ORDER] : 4;
-}
-
 /**
  * Where the application stands: draft, submitted, under review, needs information, then the
- * decision. Timestamps show only where the table has them (created, submitted, last change);
- * the audit log is not read here. "Needs information" is optional, so once past it the step
+ * decision, always in that order. Timestamps show only where the table has them (created,
+ * submitted, last change) and never run backwards (applicationTimelineSteps); the audit log is
+ * not read here. "Needs information" is optional, so once past it the step
  * says it may have been skipped rather than claiming it happened.
  */
 export function StatusTimeline({
@@ -47,24 +23,8 @@ export function StatusTimeline({
   submittedAt: string | null;
   updatedAt: string;
 }) {
-  const current = currentIndex(status);
-  const decided = current === 4;
-  const steps: Step[] = [
-    { key: "draft", label: "Draft", at: createdAt, note: "Started" },
-    { key: "submitted", label: "Submitted", at: submittedAt },
-    { key: "under_review", label: "Under review", at: status === "under_review" ? updatedAt : null },
-    {
-      key: "needs_information",
-      label: "Needs information",
-      at: status === "needs_information" ? updatedAt : null,
-      note: current > 3 ? "Only if ops asked; may have been skipped" : "Only if ops ask",
-    },
-    {
-      key: "decision",
-      label: decided ? (DECISION_LABELS[status] ?? "Decision") : "Approved or rejected",
-      at: decided ? updatedAt : null,
-    },
-  ];
+  const current = timelineIndex(status);
+  const steps = applicationTimelineSteps({ status, createdAt, submittedAt, updatedAt });
 
   return (
     <section aria-labelledby="application-timeline" className="flex flex-col gap-3">

@@ -8,14 +8,17 @@ import { DataTable, type DataTableColumn } from "@/components/data-table/data-ta
 import { StatusPulse } from "@/components/motion/status-pulse";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { describePhone } from "@/features/users/format";
+import { formatDateTime } from "@/features/applications/format";
+import {
+  ACCOUNT_STATUS_LABELS,
+  PLATFORM_ROLE_LABELS,
+  accountStatusTone,
+  describePhone,
+  roleKeyLabel,
+} from "@/features/users/format";
 import type { UserAvatarMap } from "@/lib/db/avatars";
 import type { UserPhoneMap } from "@/lib/db/phones";
 import type { AdminUserRow } from "@/types/database";
-
-function statusTone(status: AdminUserRow["account_status"]): string {
-  return status === "active" ? "border-success text-success" : "border-destructive text-destructive";
-}
 
 // Missing id: the batch call has not answered or failed. Null: the user has no phone.
 function PhoneCell({ phone }: { phone: string | null | undefined }) {
@@ -31,10 +34,15 @@ function PhoneCell({ phone }: { phone: string | null | undefined }) {
   );
 }
 
-const columns = (avatars: UserAvatarMap, phones: UserPhoneMap): DataTableColumn<AdminUserRow>[] => [
+const columns = (
+  avatars: UserAvatarMap,
+  phones: UserPhoneMap,
+  roleNames: Readonly<Record<string, string>>,
+): DataTableColumn<AdminUserRow>[] => [
   {
     id: "name",
     header: "Name",
+    className: "min-w-36 whitespace-normal",
     sortValue: (user) => user.full_name || null,
     cell: (user) => (
       <span className="flex items-center gap-2">
@@ -51,6 +59,7 @@ const columns = (avatars: UserAvatarMap, phones: UserPhoneMap): DataTableColumn<
   {
     id: "email",
     header: "Email",
+    className: "min-w-40 whitespace-normal [overflow-wrap:anywhere]",
     sortValue: (user) => user.email ?? null,
     cell: (user) => user.email ?? "No email",
   },
@@ -63,17 +72,22 @@ const columns = (avatars: UserAvatarMap, phones: UserPhoneMap): DataTableColumn<
   {
     id: "platform",
     header: "Platform role",
-    sortValue: (user) => user.platform_role ?? null,
-    cell: (user) => user.platform_role ?? <span className="text-muted-foreground">None</span>,
+    sortValue: (user) => (user.platform_role ? PLATFORM_ROLE_LABELS[user.platform_role] : null),
+    cell: (user) =>
+      user.platform_role ? (
+        PLATFORM_ROLE_LABELS[user.platform_role]
+      ) : (
+        <span className="text-muted-foreground">None</span>
+      ),
   },
   {
     id: "status",
     header: "Status",
     sortValue: (user) => user.account_status,
     cell: (user) => (
-      <StatusPulse value={user.account_status} className={statusTone(user.account_status)}>
-        <Badge variant="outline" className={statusTone(user.account_status)}>
-          {user.account_status}
+      <StatusPulse value={user.account_status} className={accountStatusTone(user.account_status)}>
+        <Badge variant="outline" className={accountStatusTone(user.account_status)}>
+          {ACCOUNT_STATUS_LABELS[user.account_status]}
         </Badge>
       </StatusPulse>
     ),
@@ -89,7 +103,7 @@ const columns = (avatars: UserAvatarMap, phones: UserPhoneMap): DataTableColumn<
         <span className="flex flex-wrap gap-1">
           {user.roles.map((role) => (
             <Badge key={role} variant="outline" className="text-muted-foreground">
-              {role}
+              {roleKeyLabel(role, roleNames)}
             </Badge>
           ))}
         </span>
@@ -98,10 +112,11 @@ const columns = (avatars: UserAvatarMap, phones: UserPhoneMap): DataTableColumn<
   {
     id: "joined",
     header: "Joined",
+    className: "min-w-28 whitespace-normal",
     sortValue: (user) => (user.created_at ? new Date(user.created_at).getTime() : null),
     cell: (user) =>
       user.created_at ? (
-        new Date(user.created_at).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })
+        <time dateTime={user.created_at}>{formatDateTime(user.created_at)}</time>
       ) : (
         <span className="text-muted-foreground">Unknown</span>
       ),
@@ -112,6 +127,7 @@ export function UserTable({
   users,
   avatars = {},
   phones = {},
+  roleNames = {},
   loading = false,
   toolbar,
   countLabel,
@@ -122,6 +138,8 @@ export function UserTable({
   avatars?: UserAvatarMap;
   /** Phones by user id from admin_list_user_phones, masked by the server without users.manage. */
   phones?: UserPhoneMap;
+  /** Admin role names by key, from the roles table; a missing key reads as the key in words. */
+  roleNames?: Readonly<Record<string, string>>;
   loading?: boolean;
   toolbar?: ReactNode;
   countLabel?: (count: number) => string;
@@ -130,7 +148,7 @@ export function UserTable({
   return (
     <DataTable
       rows={users}
-      columns={columns(avatars, phones)}
+      columns={columns(avatars, phones, roleNames)}
       rowKey={(user) => user.id}
       caption="Users"
       loading={loading}
