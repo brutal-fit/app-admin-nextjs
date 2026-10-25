@@ -31,9 +31,11 @@ export type ApplicationFilter =
   | (typeof APPLICATION_FILTERS)[number]
   | (typeof APPLICATION_QUICK_FILTERS)[number];
 
-/** The statuses review_application accepts (it refuses draft and submitted with BRVAL). */
+/**
+ * The statuses review_application accepts. Under review is not one: the first document
+ * verdict starts the review on the server (20261025034421).
+ */
 export const REVIEW_DECISIONS = [
-  "under_review",
   "needs_information",
   "approved",
   "rejected",
@@ -148,8 +150,8 @@ export const trainerIdSchema = z.guid("Unknown application.");
 
 /**
  * Approving publishes the trainer at the platform price, so every mode they offer needs a
- * price. Shared by the decision form and the server action (which reads the modes from the
- * database). review_application itself accepts a missing price and keeps any earlier one.
+ * price. Shared by the review panel and the server action (which reads the modes from the
+ * database); review_application refuses it too since 20261025034421.
  */
 export function missingPriceMessage(
   status: ReviewDecision | "",
@@ -166,14 +168,27 @@ export function missingPriceMessage(
   return null;
 }
 
-export const reviewApplicationSchema = z.object({
-  trainerId: trainerIdSchema,
-  status: z.enum(REVIEW_DECISIONS, { error: "Choose a decision." }),
-  note: note(1000),
-  homeRateInr: priceInr,
-  onlineRateInr: priceInr,
-  verifiedChecks: z.array(z.enum(VERIFIED_CHECKS, { error: "Unknown check." })).max(3),
-});
+/** Decisions the trainer must be told the reason for; the server requires it for the first. */
+const NOTE_REQUIRED: Partial<Record<ReviewDecision, string>> = {
+  needs_information: "Say what is missing.",
+  rejected: "Say why the application is rejected.",
+};
+
+export const reviewApplicationSchema = z
+  .object({
+    trainerId: trainerIdSchema,
+    status: z.enum(REVIEW_DECISIONS, { error: "Choose a decision." }),
+    note: note(1000),
+    homeRateInr: priceInr,
+    onlineRateInr: priceInr,
+    verifiedChecks: z.array(z.enum(VERIFIED_CHECKS, { error: "Unknown check." })).max(3),
+  })
+  .superRefine((value, context) => {
+    const message = NOTE_REQUIRED[value.status];
+    if (message && value.note === null) {
+      context.addIssue({ code: "custom", path: ["note"], message });
+    }
+  });
 
 export type ReviewApplicationInput = z.input<typeof reviewApplicationSchema>;
 

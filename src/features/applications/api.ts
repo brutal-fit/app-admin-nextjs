@@ -12,6 +12,7 @@ import {
   type ApplicationSummaryRow,
   type DocumentSummaryRow,
 } from "@/lib/db/applications";
+import { listAuditLog } from "@/lib/db/audit";
 import { getUser } from "@/lib/db/rbac";
 import { can } from "@/lib/rbac/can";
 import { toAppError } from "@/lib/supabase/errors";
@@ -24,6 +25,7 @@ import {
   trainerIdSchema,
   type ApplicationFilter,
 } from "@/features/applications/schemas";
+import { reviewHistoryFromAudit, type ReviewHistory } from "@/features/applications/review-state";
 
 /**
  * A username is readable only through admin_get_user, which needs users.read. `undefined`
@@ -65,8 +67,38 @@ export type ApplicationDetailResult =
       /** Null when the session lacks documents.review (RLS would return no rows anyway). */
       documents: DocumentSummaryRow[] | null;
       availability: AvailabilityWindowRow[];
+      /**
+       * The review as the audit log tells it; null without audit.read or when the read fails,
+       * and the panel then works from the application row alone.
+       */
+      history: ReviewHistory | null;
     }
   | { ok: false; error: string };
+
+// Enough audit rows for one trainer's whole review at today's scale.
+const REVIEW_HISTORY_LIMIT = 200;
+
+async function loadReviewHistory(
+  client: AppSupabaseClient,
+  trainerId: string,
+): Promise<ReviewHistory | null> {
+  try {
+    const page = await listAuditLog(client, {
+      actorId: null,
+      action: null,
+      targetId: trainerId,
+      from: null,
+      to: null,
+      search: null,
+      limit: REVIEW_HISTORY_LIMIT,
+      offset: 0,
+    });
+    return reviewHistoryFromAudit(page.rows);
+  } catch {
+    // The history only adds times and the resubmission marker; the page works without it.
+    return null;
+  }
+}
 
 async function lookupUsernames(
   client: AppSupabaseClient,
@@ -144,11 +176,13 @@ export async function loadApplicationDetail(
   try {
     const canSeeDocuments = can(access.permissions, "documents.review");
     const canSeeUsername = can(access.permissions, "users.read");
-    const [application, documents, availability, usernames] = await Promise.all([
+    const canSeeHistory = can(access.permissions, "audit.read");
+    const [application, documents, availability, usernames, history] = await Promise.all([
       getApplication(client, trainerId),
       canSeeDocuments ? listDocuments(client, trainerId) : Promise.resolve(null),
       listAvailability(client, trainerId),
       canSeeUsername ? lookupUsernames(client, [trainerId]) : Promise.resolve(null),
+      canSeeHistory ? loadReviewHistory(client, trainerId) : Promise.resolve(null),
     ]);
     return {
       ok: true,
@@ -156,6 +190,7 @@ export async function loadApplicationDetail(
       username: usernames ? (usernames.get(trainerId) ?? null) : undefined,
       documents,
       availability,
+      history,
     };
   } catch (error) {
     return { ok: false, error: toAppError(error).message };

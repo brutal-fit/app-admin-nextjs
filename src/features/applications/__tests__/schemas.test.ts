@@ -56,6 +56,18 @@ describe("reviewApplicationSchema", () => {
     expect(parsed.note).toBeNull();
   });
 
+  it("refuses under review as a manual decision", () => {
+    expect(reviewApplicationSchema.safeParse({ ...base, status: "under_review" }).success).toBe(false);
+  });
+
+  it("needs a note to reject or ask for information", () => {
+    for (const status of ["rejected", "needs_information"]) {
+      const result = reviewApplicationSchema.safeParse({ ...base, status, note: " " });
+      expect(result.success).toBe(false);
+      expect(reviewApplicationSchema.safeParse({ ...base, status, note: "Blurry ID" }).success).toBe(true);
+    }
+  });
+
   it("rejects draft and submitted as decisions", () => {
     expect(reviewApplicationSchema.safeParse({ ...base, status: "draft" }).success).toBe(false);
     expect(reviewApplicationSchema.safeParse({ ...base, status: "submitted" }).success).toBe(

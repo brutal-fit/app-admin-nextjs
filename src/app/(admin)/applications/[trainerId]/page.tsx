@@ -2,9 +2,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { StatusPulse } from "@/components/motion/status-pulse";
 import { Badge } from "@/components/ui/badge";
 import { ApplicationDetail } from "@/features/applications/components/application-detail";
-import { DecisionForm } from "@/features/applications/components/decision-form";
-import { DocumentList } from "@/features/applications/components/document-list";
-import { StatusTimeline } from "@/features/applications/components/status-timeline";
+import { ReviewPanel } from "@/features/applications/components/review-panel";
 import { loadApplicationDetail } from "@/features/applications/api";
 import { applicationStatusTone } from "@/features/applications/format";
 import { APPLICATION_STATUS_LABELS } from "@/features/applications/schemas";
@@ -35,10 +33,10 @@ export default async function ApplicationDetailPage({
     );
   }
 
-  const { application, username, documents, availability } = result;
+  const { application, username, documents, availability, history } = result;
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <PageHeader
         eyebrow="Trainer application"
         title={application.full_name || "Unnamed"}
@@ -61,50 +59,19 @@ export default async function ApplicationDetailPage({
         }
       />
 
-      <div className="rounded-xl border bg-card p-5 shadow-tile">
-        <StatusTimeline
-          status={application.status}
-          createdAt={application.created_at}
-          submittedAt={application.submitted_at}
-          updatedAt={application.updated_at}
+      {/* Facts on the left, read-only; the review on the right as one checklist. */}
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_26rem]">
+        <ApplicationDetail application={application} username={username} availability={availability} />
+        <ReviewPanel
+          application={application}
+          documents={documents}
+          history={history}
+          canDecide={can(access.permissions, "applications.review")}
+          trainerHref={
+            can(access.permissions, "trainers.read") ? `/trainers/${application.trainer_id}` : null
+          }
         />
       </div>
-
-      <ApplicationDetail
-        application={application}
-        username={username}
-        availability={availability}
-        documents={
-          documents === null ? (
-            <p className="text-sm text-muted-foreground">
-              Documents need the Review documents permission.
-            </p>
-          ) : (
-            <DocumentList documents={documents} />
-          )
-        }
-      />
-
-      <section aria-labelledby="application-decision" className="flex flex-col gap-4">
-        <h2 id="application-decision" className="text-lg font-semibold">
-          Decision
-        </h2>
-        {can(access.permissions, "applications.review") ? (
-          // Keyed on updated_at so the form starts fresh from what the server stored.
-          <DecisionForm
-            key={application.updated_at}
-            trainerId={application.trainer_id}
-            currentStatus={application.status}
-            modes={application.modes}
-            expectedHomeRateInr={application.expected_home_rate_inr}
-            expectedOnlineRateInr={application.expected_online_rate_inr}
-          />
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Decisions need the Approve or reject applications permission.
-          </p>
-        )}
-      </section>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type FormEvent } from "react";
+import { useState, useTransition, type FormEvent, type ReactNode } from "react";
 import { FileText } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -34,12 +34,18 @@ import type { DocumentKind } from "@/types/database";
 export function RequestDocumentsDialog({
   trainerId,
   trainerName,
+  defaultKinds = [],
+  trigger,
 }: {
   trainerId: string;
   trainerName: string;
+  /** Kinds ticked each time the dialog opens (the review panel passes the rejected or missing ones). */
+  defaultKinds?: readonly DocumentKind[];
+  /** A button to open the dialog with; defaults to "Request documents". */
+  trigger?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-  const [kinds, setKinds] = useState<ReadonlySet<DocumentKind>>(new Set());
+  const [kinds, setKinds] = useState<ReadonlySet<DocumentKind>>(new Set(defaultKinds));
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -83,14 +89,17 @@ export function RequestDocumentsDialog({
       open={open}
       onOpenChange={(value) => {
         setOpen(value);
-        if (!value) setError(null);
+        if (value) setKinds(new Set(defaultKinds));
+        else setError(null);
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="outline">
-          <FileText size={16} aria-hidden="true" />
-          Request documents
-        </Button>
+        {trigger ?? (
+          <Button variant="outline">
+            <FileText size={16} aria-hidden="true" />
+            Request documents
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

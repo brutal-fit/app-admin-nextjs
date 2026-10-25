@@ -37,8 +37,9 @@ function text(value: string): ReactNode {
 }
 
 /**
- * The applicant's answers, grouped as the app asks them. Expected rates are the trainer's
- * own; the platform price is set by ops in the decision form. Gated by applications.read.
+ * The applicant's answers, grouped as the app asks them, read-only. Expected rates are the
+ * trainer's own; the platform price is set by ops in the review panel. Gated by
+ * applications.read.
  */
 export function ApplicationDetail({
   application,
@@ -49,8 +50,8 @@ export function ApplicationDetail({
   application: TrainerApplicationRow;
   username: Username;
   availability: AvailabilityWindowRow[];
-  /** The documents section body; the page picks it by permission. */
-  documents: ReactNode;
+  /** The documents section body, if the page shows documents here (the review panel has them). */
+  documents?: ReactNode;
 }) {
   const offersHome = application.modes.includes("home");
   const offersOnline = application.modes.includes("online");
@@ -120,7 +121,7 @@ export function ApplicationDetail({
         />
         <p className="text-xs text-muted-foreground">
           Expected rates are what the trainer asked for. The platform price clients pay is set in
-          the decision below.
+          the review panel.
         </p>
       </Section>
 
@@ -132,9 +133,11 @@ export function ApplicationDetail({
         )}
       </Section>
 
-      <Section id="application-documents" title="Documents">
-        {documents}
-      </Section>
+      {documents !== undefined ? (
+        <Section id="application-documents" title="Documents">
+          {documents}
+        </Section>
+      ) : null}
     </div>
   );
 }

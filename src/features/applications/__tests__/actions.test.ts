@@ -74,7 +74,7 @@ describe("reviewApplicationAction", () => {
   });
 
   it("drops prices and checks for non-approval decisions", async () => {
-    await reviewApplicationAction({ ...approve, status: "rejected" });
+    await reviewApplicationAction({ ...approve, status: "rejected", note: "Not a fit yet." });
     expect(mocks.reviewApplication).toHaveBeenCalledWith(
       {},
       expect.objectContaining({ homeRateInr: null, onlineRateInr: null, verifiedChecks: null }),
@@ -91,8 +91,15 @@ describe("reviewApplicationAction", () => {
 
   it("maps a missing permission to an error result", async () => {
     mocks.requirePermission.mockRejectedValue(new ForbiddenError("applications.review"));
-    const result = await reviewApplicationAction({ ...approve, status: "rejected" });
+    const result = await reviewApplicationAction({ ...approve, status: "rejected", note: "No." });
     expect(result.ok).toBe(false);
+    expect(mocks.reviewApplication).not.toHaveBeenCalled();
+  });
+
+  it("refuses a rejection without a reason before checking permission", async () => {
+    const result = await reviewApplicationAction({ ...approve, status: "rejected", note: " " });
+    expect(result.ok).toBe(false);
+    expect(mocks.requirePermission).not.toHaveBeenCalled();
     expect(mocks.reviewApplication).not.toHaveBeenCalled();
   });
 });

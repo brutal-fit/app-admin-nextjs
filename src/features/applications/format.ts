@@ -75,76 +75,12 @@ export function documentStatusTone(status: DocumentStatus): string {
   return "border-warning text-warning";
 }
 
-export type TimelineStep = {
-  key: "draft" | "submitted" | "under_review" | "needs_information" | "decision";
-  label: string;
-  /** The timestamp the data has for this step, if any. */
-  at: string | null;
-  note?: string;
-};
-
-const TIMELINE_RANK: Record<Exclude<ApplicationStatus, "approved" | "rejected" | "suspended">, number> = {
-  draft: 0,
-  submitted: 1,
-  under_review: 2,
-  needs_information: 3,
-};
-
-const DECISION_LABELS: Partial<Record<ApplicationStatus, string>> = {
-  approved: "Approved",
-  rejected: "Rejected",
-  suspended: "Suspended",
-};
-
-/** The timeline step an application is on: 0 draft .. 3 needs information, 4 decided. */
-export function timelineIndex(status: ApplicationStatus): number {
-  return status in TIMELINE_RANK ? TIMELINE_RANK[status as keyof typeof TIMELINE_RANK] : 4;
-}
-
-/**
- * The application's steps in rank order (draft, submitted, under review, needs information,
- * decision), each with the timestamp the table has for it. Steps keep their rank order even
- * when the data disagrees: a step dated after a later step (a draft created after its own
- * submission, as one seed row is) shows the later step's time, the latest it can have
- * happened, so the timeline never reads backwards.
- */
-export function applicationTimelineSteps(input: {
-  status: ApplicationStatus;
-  createdAt: string;
-  submittedAt: string | null;
-  updatedAt: string;
-}): TimelineStep[] {
-  const { status, createdAt, submittedAt, updatedAt } = input;
-  const current = timelineIndex(status);
-  const decided = current === 4;
-  const steps: TimelineStep[] = [
-    { key: "draft", label: "Draft", at: createdAt, note: "Started" },
-    { key: "submitted", label: "Submitted", at: submittedAt },
-    { key: "under_review", label: "Under review", at: status === "under_review" ? updatedAt : null },
-    {
-      key: "needs_information",
-      label: "Needs information",
-      at: status === "needs_information" ? updatedAt : null,
-      note: current > 3 ? "Only if ops asked; may have been skipped" : "Only if ops ask",
-    },
-    {
-      key: "decision",
-      label: decided ? (DECISION_LABELS[status] ?? "Decision") : "Approved or rejected",
-      at: decided ? updatedAt : null,
-    },
-  ];
-
-  let later: { at: string; time: number } | null = null;
-  for (let index = steps.length - 1; index >= 0; index -= 1) {
-    const step = steps[index];
-    if (!step?.at) continue;
-    const time = Date.parse(step.at);
-    if (Number.isNaN(time)) continue;
-    if (later && time > later.time) {
-      step.at = later.at;
-    } else {
-      later = { at: step.at, time };
-    }
-  }
-  return steps;
+/** Chip classes for a required document row in the review panel. */
+export function requiredDocumentTone(
+  state: "missing" | "waiting" | "resubmitted" | "accepted" | "rejected",
+): string {
+  if (state === "accepted") return "border-success text-success";
+  if (state === "rejected") return "border-destructive text-destructive";
+  if (state === "missing") return "text-muted-foreground";
+  return "border-warning text-warning";
 }
