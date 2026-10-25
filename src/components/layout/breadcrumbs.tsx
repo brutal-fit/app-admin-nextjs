@@ -14,6 +14,8 @@ const SECTION_LABELS: Record<string, { label: string; detail: string }> = {
   "my-gym": { label: "My gym", detail: "Details" },
   support: { label: "Support", detail: "Case" },
   bookings: { label: "Bookings", detail: "Booking" },
+  subscriptions: { label: "Subscriptions", detail: "Subscription" },
+  coaching: { label: "Coaching", detail: "Coaching" },
   payments: { label: "Payments", detail: "Payment" },
   reviews: { label: "Reviews", detail: "Review" },
   catalogue: { label: "Catalogue", detail: "Item" },

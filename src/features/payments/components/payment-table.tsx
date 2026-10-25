@@ -23,8 +23,15 @@ function columns(
   now: number,
 ): DataTableColumn<PaymentListRow>[] {
   const bookingOf = (row: PaymentListRow): PaymentBooking | null =>
-    bookings.visible ? (bookings.bookings[row.booking_id] ?? null) : null;
+    bookings.visible && row.booking_id ? (bookings.bookings[row.booking_id] ?? null) : null;
   const hidden = <span className="text-muted-foreground">Hidden</span>;
+  // A subscription period or coaching month payment has no booking and no single session.
+  const noBooking = (row: PaymentListRow) =>
+    row.booking_id ? null : (
+      <span className="text-muted-foreground">
+        {row.subscription_period_id ? "Subscription period" : row.coaching_period_id ? "Coaching month" : "No booking"}
+      </span>
+    );
   return [
     {
       id: "date",
@@ -42,6 +49,7 @@ function columns(
       className: "min-w-40 whitespace-normal",
       sortValue: (row) => bookingOf(row)?.startAt ?? row.booking_id,
       cell: (row) => {
+        if (!row.booking_id) return noBooking(row);
         const booking = bookingOf(row);
         const text = booking ? formatSessionRange(booking.startAt, booking.endAt) : `Booking ${shortId(row.booking_id)}`;
         return links.bookings ? (
@@ -59,6 +67,7 @@ function columns(
       className: "min-w-32 whitespace-normal",
       sortValue: (row) => bookingOf(row)?.clientName ?? null,
       cell: (row) => {
+        if (!row.booking_id) return noBooking(row);
         if (!bookings.visible) return hidden;
         const booking = bookingOf(row);
         if (!booking) return <span className="text-muted-foreground">Not found</span>;
@@ -78,6 +87,7 @@ function columns(
       className: "min-w-36 whitespace-normal",
       sortValue: (row) => bookingOf(row)?.trainerName ?? bookingOf(row)?.gymName ?? null,
       cell: (row) => {
+        if (!row.booking_id) return noBooking(row);
         if (!bookings.visible) return hidden;
         const booking = bookingOf(row);
         if (!booking) return <span className="text-muted-foreground">Not found</span>;

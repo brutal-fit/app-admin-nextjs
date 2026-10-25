@@ -122,6 +122,11 @@ export const setTrainerListedSchema = z.object({
   published: z.boolean({ error: "Choose listed or not listed." }),
 });
 
+export const setOffersCoachingSchema = z.object({
+  trainerId: trainerIdSchema,
+  offersCoaching: z.boolean({ error: "Choose on or off." }),
+});
+
 const wholeNumber = (label: string, min: number, max: number) =>
   z
     .number({ error: `${label} is a whole number.` })

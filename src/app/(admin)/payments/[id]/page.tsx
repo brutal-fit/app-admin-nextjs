@@ -49,6 +49,7 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
 
       <PaymentDetail
         payment={payment}
+        purpose={result.purpose}
         booking={result.booking}
         bookingState={result.bookingState}
         permissions={access.permissions}

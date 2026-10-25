@@ -3,6 +3,7 @@ import {
   parseListedFilter,
   parseTextList,
   requestDocumentsSchema,
+  setOffersCoachingSchema,
   setServicesSchema,
   trainerListHref,
   updateTrainerProfileSchema,
@@ -96,5 +97,14 @@ describe("requestDocumentsSchema", () => {
     expect(ok.success && ok.data.kinds).toEqual(["certificate", "other"]);
     expect(requestDocumentsSchema.safeParse({ trainerId: ID, message: " ", kinds: [] }).success).toBe(false);
     expect(requestDocumentsSchema.safeParse({ trainerId: ID, message: "hi", kinds: ["selfie"] }).success).toBe(false);
+  });
+});
+
+describe("setOffersCoachingSchema", () => {
+  it("takes a trainer id and a boolean", () => {
+    const id = "d1111111-1111-4111-8111-111111111111";
+    expect(setOffersCoachingSchema.safeParse({ trainerId: id, offersCoaching: true }).success).toBe(true);
+    expect(setOffersCoachingSchema.safeParse({ trainerId: id, offersCoaching: "yes" }).success).toBe(false);
+    expect(setOffersCoachingSchema.safeParse({ trainerId: "nope", offersCoaching: false }).success).toBe(false);
   });
 });

@@ -5,6 +5,7 @@ import { requestDocuments, setServices, updateTrainerProfile } from "@/lib/db/tr
 import { runAction } from "@/server/run-action";
 import {
   requestDocumentsSchema,
+  setOffersCoachingSchema,
   setServicesSchema,
   setTrainerListedSchema,
   updateTrainerProfileSchema,
@@ -25,6 +26,14 @@ export async function updateTrainerProfileAction(input: unknown): Promise<Action
 export async function setTrainerListedAction(input: unknown): Promise<ActionResult> {
   return runAction(setTrainerListedSchema, input, "trainers.edit", async (data, { supabase }) => {
     await updateTrainerProfile(supabase, data.trainerId, { published: data.published });
+    refresh();
+    return undefined;
+  });
+}
+
+export async function setOffersCoachingAction(input: unknown): Promise<ActionResult> {
+  return runAction(setOffersCoachingSchema, input, "trainers.edit", async (data, { supabase }) => {
+    await updateTrainerProfile(supabase, data.trainerId, { offers_coaching: data.offersCoaching });
     refresh();
     return undefined;
   });

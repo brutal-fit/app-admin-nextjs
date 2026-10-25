@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   parseIntegerListText,
   parseIntegerText,
+  SETTING_DEFINITIONS,
   setSettingSchema,
   storedSettingValue,
 } from "@/features/settings/schemas";
@@ -94,5 +95,43 @@ describe("text parsing", () => {
     expect(storedSettingValue("booking.cancellation_window_hours", 24)).toBe(24);
     expect(storedSettingValue("booking.cancellation_window_hours", "24")).toBeNull();
     expect(storedSettingValue("booking.session_durations", null)).toBeNull();
+  });
+});
+
+describe("subscription and coaching settings", () => {
+  const check = (key: string, value: unknown) => setSettingSchema.safeParse({ key, value }).success;
+
+  it.each(["subscriptions.enabled", "coaching.enabled"])("accepts only a boolean for %s", (key) => {
+    expect(check(key, true)).toBe(true);
+    expect(check(key, false)).toBe(true);
+    expect(check(key, "true")).toBe(false);
+  });
+
+  it.each(["subscriptions.discount_month_pct", "subscriptions.discount_quarter_pct"])(
+    "bounds %s to 0-50 whole percent",
+    (key) => {
+      expect(check(key, 0)).toBe(true);
+      expect(check(key, 50)).toBe(true);
+      expect(check(key, 51)).toBe(false);
+      expect(check(key, -1)).toBe(false);
+      expect(check(key, 12.5)).toBe(false);
+    },
+  );
+
+  it("bounds the coaching fee multiplier to 0.5-3 in steps of 0.1", () => {
+    for (const value of [0.5, 0.7, 1, 1.5, 2.9, 3]) expect(check("coaching.fee_multiplier", value), String(value)).toBe(true);
+    for (const value of [0.4, 3.1, 1.25, Number.NaN]) expect(check("coaching.fee_multiplier", value), String(value)).toBe(false);
+  });
+
+  it("lists every new key with a definition", () => {
+    for (const key of [
+      "subscriptions.enabled",
+      "subscriptions.discount_month_pct",
+      "subscriptions.discount_quarter_pct",
+      "coaching.enabled",
+      "coaching.fee_multiplier",
+    ]) {
+      expect(SETTING_DEFINITIONS.some((definition) => definition.key === key), key).toBe(true);
+    }
   });
 });

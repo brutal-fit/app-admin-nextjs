@@ -31,7 +31,7 @@ const RPC = {
 
 // search_text is a derived column the panel never needs.
 const PROFILE_COLUMNS =
-  "trainer_id, display_name, headline, bio, specialties, modes, service_area, languages, years_experience, verified_checks, availability_tags, certifications, approved_home_rate_inr, approved_online_rate_inr, pricing_acknowledged_at, published, created_at, updated_at";
+  "trainer_id, display_name, headline, bio, specialties, modes, service_area, languages, years_experience, verified_checks, availability_tags, certifications, approved_home_rate_inr, approved_online_rate_inr, pricing_acknowledged_at, published, offers_coaching, created_at, updated_at";
 
 export type TrainerProfileSummaryRow = Pick<
   TrainerProfileRow,
@@ -106,6 +106,8 @@ export type TrainerProfileFields = Partial<{
   languages: string[];
   service_area: string;
   published: boolean;
+  /** 20261024035357: the trainer can be picked as a coach for library programmes. */
+  offers_coaching: boolean;
 }>;
 
 export async function updateTrainerProfile(

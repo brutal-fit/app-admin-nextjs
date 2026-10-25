@@ -14,7 +14,9 @@ import {
   type PaymentListRow,
   type PaymentSearch,
 } from "@/lib/db/payments";
+import { getPeriodCoachingId } from "@/lib/db/coaching";
 import { listUsers } from "@/lib/db/rbac";
+import { getPeriodSubscriptionId } from "@/lib/db/subscriptions";
 import { can } from "@/lib/rbac/can";
 import { toAppError } from "@/lib/supabase/errors";
 import type { AppSupabaseClient } from "@/lib/supabase/server";
@@ -55,7 +57,7 @@ export type PaymentListResult =
 async function bookingsFor(
   client: AppSupabaseClient,
   access: SessionAccess,
-  bookingIds: readonly string[],
+  bookingIds: readonly (string | null)[],
 ): Promise<PaymentBookingsState> {
   if (!can(access.permissions, "bookings.read")) {
     return { kind: "hidden", reason: missingPermissionMessage("bookings.read", "Client, trainer and session details") };
@@ -133,9 +135,45 @@ export async function loadPaymentList(
   }
 }
 
+/**
+ * What a payment without a booking pays for: a subscription period or a coaching month, with
+ * the subscription or coaching it belongs to when bookings.read lets the panel read it.
+ */
+export type PaymentPurpose =
+  | { kind: "booking" }
+  | { kind: "subscription"; subscriptionId: string | null }
+  | { kind: "coaching"; coachingId: string | null };
+
 export type PaymentDetailResult =
-  | { ok: true; payment: PaymentRow; booking: PaymentBooking | null; bookingState: PaymentBookingsState }
+  | {
+      ok: true;
+      payment: PaymentRow;
+      purpose: PaymentPurpose;
+      booking: PaymentBooking | null;
+      bookingState: PaymentBookingsState;
+    }
   | { ok: false; error: string };
+
+async function purposeOf(
+  client: AppSupabaseClient,
+  access: SessionAccess,
+  payment: PaymentRow,
+): Promise<PaymentPurpose> {
+  const readable = can(access.permissions, "bookings.read");
+  if (payment.subscription_period_id) {
+    const subscriptionId = readable
+      ? await getPeriodSubscriptionId(client, payment.subscription_period_id).catch(() => null)
+      : null;
+    return { kind: "subscription", subscriptionId };
+  }
+  if (payment.coaching_period_id) {
+    const coachingId = readable
+      ? await getPeriodCoachingId(client, payment.coaching_period_id).catch(() => null)
+      : null;
+    return { kind: "coaching", coachingId };
+  }
+  return { kind: "booking" };
+}
 
 export async function loadPaymentDetail(
   client: AppSupabaseClient,
@@ -145,9 +183,11 @@ export async function loadPaymentDetail(
   if (!paymentIdSchema.safeParse(id).success) return { ok: false, error: "This payment does not exist." };
   try {
     const payment = await getPayment(client, id);
-    const bookingState = await bookingsFor(client, access, [payment.booking_id]);
-    const booking = bookingState.kind === "ok" ? (bookingState.bookings[payment.booking_id] ?? null) : null;
-    return { ok: true, payment, booking, bookingState };
+    const purpose = await purposeOf(client, access, payment);
+    const bookingId = payment.booking_id;
+    const bookingState = await bookingsFor(client, access, bookingId ? [bookingId] : []);
+    const booking = bookingState.kind === "ok" && bookingId ? (bookingState.bookings[bookingId] ?? null) : null;
+    return { ok: true, payment, purpose, booking, bookingState };
   } catch (error) {
     return { ok: false, error: toAppError(error).message };
   }

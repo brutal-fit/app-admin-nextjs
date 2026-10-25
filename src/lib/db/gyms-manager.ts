@@ -208,7 +208,7 @@ export async function listGymRequests(client: AppSupabaseClient, gymId: string):
 export const GYM_BOOKINGS_MAX = 100;
 
 /** The booking_details columns the gym pages read (not the gym's own name and address). */
-export type GymBookingRow = Omit<BookingDetailsRow, "gym_name" | "gym_address_text">;
+export type GymBookingRow = Omit<BookingDetailsRow, "gym_name" | "gym_address_text" | "payment_status" | "subscription_id">;
 
 const BOOKING_DETAIL_COLUMNS =
   "id, client_id, trainer_id, service_title, mode, start_at, end_at, price_snapshot_inr, status, client_name, trainer_name, gym_id";

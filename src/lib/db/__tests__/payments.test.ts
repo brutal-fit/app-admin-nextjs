@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { getBookingPayment, listPayments, refundPayment, type PaymentQuery } from "@/lib/db/payments";
 import type { AppSupabaseClient } from "@/lib/supabase/server";
-import { paymentRow, paymentsInEveryState } from "@/features/payments/__tests__/fixtures";
+import { BOOKING_ID, paymentRow, paymentsInEveryState } from "@/features/payments/__tests__/fixtures";
 
 type Row = Record<string, unknown>;
 type Call = { method: string; args: unknown[] };
@@ -96,8 +96,8 @@ describe("getBookingPayment", () => {
   it("prefers the live payment over a newer failed one, and is null without any", async () => {
     const failed = paymentRow({ id: "x1", state: "failed", created_at: "2026-10-22T00:00:00Z" });
     const live = paymentRow({ id: "x2", state: "paid", created_at: "2026-10-21T00:00:00Z" });
-    expect((await getBookingPayment(fakeClient([failed, live]).client, live.booking_id))?.id).toBe("x2");
-    expect((await getBookingPayment(fakeClient([failed]).client, failed.booking_id))?.id).toBe("x1");
+    expect((await getBookingPayment(fakeClient([failed, live]).client, BOOKING_ID))?.id).toBe("x2");
+    expect((await getBookingPayment(fakeClient([failed]).client, BOOKING_ID))?.id).toBe("x1");
     expect(await getBookingPayment(fakeClient([]).client, "none")).toBeNull();
   });
 });

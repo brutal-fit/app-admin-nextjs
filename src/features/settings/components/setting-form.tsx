@@ -20,9 +20,12 @@ import {
   COACH_MODEL_LABELS,
   COACH_MODELS,
   isBooleanSettingKey,
+  isDecimalSettingKey,
+  isIntegerSettingKey,
   POLICY_COPY_LABELS,
   POLICY_COPY_MAX,
   POLICY_COPY_PARTS,
+  parseDecimalText,
   parseIntegerListText,
   parseIntegerText,
   setSettingSchema,
@@ -35,6 +38,7 @@ import { showToast } from "@/stores/toast-store";
 
 type Draft =
   | { input: "integer"; text: string }
+  | { input: "decimal"; text: string }
   | { input: "integer_list"; text: string }
   | { input: "policy_copy"; parts: Record<PolicyCopyPart, string> }
   | { input: "phone"; text: string }
@@ -47,11 +51,13 @@ function initialDraft(entry: SettingEntry): Draft {
   const { key, input } = entry.definition;
   switch (input) {
     case "integer": {
-      const value =
-        key === "booking.cancellation_window_hours" || key === "trainer.max_rate_inr"
-          ? storedSettingValue(key, entry.value)
-          : null;
+      const value = isIntegerSettingKey(key) ? storedSettingValue(key, entry.value) : null;
       return { input, text: value === null ? "" : String(value) };
+    }
+    case "decimal": {
+      const value = isDecimalSettingKey(key) ? storedSettingValue(key, entry.value) : null;
+      // One decimal place, so a stored 1.0 reads "1.0" and not "1".
+      return { input, text: value === null ? "" : value.toFixed(1) };
     }
     case "integer_list": {
       const value = storedSettingValue("booking.session_durations", entry.value);
@@ -79,10 +85,9 @@ function initialDraft(entry: SettingEntry): Draft {
 function toInput(key: SettingEntry["definition"]["key"], draft: Draft): SetSettingInput | null {
   switch (draft.input) {
     case "integer":
-      if (key === "booking.cancellation_window_hours" || key === "trainer.max_rate_inr") {
-        return { key, value: parseIntegerText(draft.text) };
-      }
-      return null;
+      return isIntegerSettingKey(key) ? { key, value: parseIntegerText(draft.text) } : null;
+    case "decimal":
+      return isDecimalSettingKey(key) ? { key, value: parseDecimalText(draft.text) } : null;
     case "integer_list":
       return key === "booking.session_durations"
         ? { key, value: parseIntegerListText(draft.text) }
@@ -208,8 +213,16 @@ export function SettingForm({ entry }: { entry: SettingEntry }) {
             <Input
               id={`${base}-value`}
               value={draft.text}
-              inputMode={draft.input === "integer" ? "numeric" : draft.input === "phone" ? "tel" : "text"}
-              className={draft.input === "integer" ? "w-40" : "max-w-sm"}
+              inputMode={
+                draft.input === "integer"
+                  ? "numeric"
+                  : draft.input === "decimal"
+                    ? "decimal"
+                    : draft.input === "phone"
+                      ? "tel"
+                      : "text"
+              }
+              className={draft.input === "integer" || draft.input === "decimal" ? "w-40" : "max-w-sm"}
               aria-describedby={describedBy}
               onChange={(event) => setDraft({ ...draft, text: event.target.value })}
             />

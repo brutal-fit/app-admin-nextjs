@@ -8,7 +8,10 @@ import { DocumentList } from "@/features/applications/components/document-list";
 import { formatInr } from "@/features/applications/format";
 import { MODE_LABELS } from "@/features/applications/schemas";
 import { permittedHref } from "@/features/support/format";
+import { CustomPlanList } from "@/features/coaching/components/custom-plan-list";
+import { loadCustomPlans } from "@/features/coaching/api";
 import { ListingToggle } from "@/features/trainers/components/listing-toggle";
+import { OffersCoachingToggle } from "@/features/trainers/components/offers-coaching-toggle";
 import { RequestDocumentsDialog } from "@/features/trainers/components/request-documents-dialog";
 import { ServicesEditor } from "@/features/trainers/components/services-editor";
 import { TrainerProfileForm } from "@/features/trainers/components/trainer-profile-form";
@@ -72,6 +75,7 @@ export default async function TrainerDetailPage({ params }: { params: Promise<{ 
   }
 
   const { profile, services, rating, application, documents, specialtyOptions, languageOptions } = result;
+  const customPlans = await loadCustomPlans(supabase, access, { trainerId: profile.trainer_id });
   const name = profile.display_name || application?.fullName || "Unnamed";
   const canEdit = can(access.permissions, "trainers.edit");
   const canReviewDocuments = can(access.permissions, "documents.review");
@@ -124,6 +128,17 @@ export default async function TrainerDetailPage({ params }: { params: Promise<{ 
             <HeaderLink
               href={permittedHref(
                 access.permissions,
+                `/subscriptions?trainer=${encodeURIComponent(profile.trainer_id)}`,
+              )}
+              label="Subscriptions"
+            />
+            <HeaderLink
+              href={permittedHref(access.permissions, `/coaching?coach=${encodeURIComponent(profile.trainer_id)}`)}
+              label="Coaching"
+            />
+            <HeaderLink
+              href={permittedHref(
+                access.permissions,
                 `/reviews?trainer=${encodeURIComponent(profile.trainer_id)}`,
               )}
               label="Reviews"
@@ -154,6 +169,25 @@ export default async function TrainerDetailPage({ params }: { params: Promise<{ 
           <p className="text-sm text-muted-foreground">
             {missingPermissionMessage("trainers.edit", "Listing and unlisting")}
           </p>
+        )}
+      </Section>
+
+      <Section id="trainer-coaching" title="Coaching">
+        {canEdit ? (
+          // Keyed on the stored value so the switch restarts from the server after a save.
+          <OffersCoachingToggle
+            key={String(profile.offers_coaching)}
+            trainerId={profile.trainer_id}
+            trainerName={name}
+            offersCoaching={profile.offers_coaching}
+          />
+        ) : (
+          <div className="flex flex-col gap-1">
+            <p className="text-sm">{profile.offers_coaching ? "Offers coaching." : "Does not offer coaching."}</p>
+            <p className="text-sm text-muted-foreground">
+              {missingPermissionMessage("trainers.edit", "Changing whether this trainer coaches")}
+            </p>
+          </div>
         )}
       </Section>
 
@@ -218,6 +252,13 @@ export default async function TrainerDetailPage({ params }: { params: Promise<{ 
             </p>
           </div>
         )}
+      </Section>
+
+      <Section id="trainer-plans" title="Plans">
+        <p className="max-w-3xl text-sm text-muted-foreground">
+          Custom plans this trainer built for clients with a subscription or a coaching. Read only.
+        </p>
+        <CustomPlanList state={customPlans} side="trainer" permissions={access.permissions} />
       </Section>
 
       <Section id="trainer-documents" title="Documents">

@@ -102,7 +102,7 @@ export const PERMISSIONS = [
     name: "Edit trainer profiles, services and prices",
     routes: [],
     apis: [],
-    components: ["trainer-profile-form", "services-editor", "listing-toggle"],
+    components: ["trainer-profile-form", "services-editor", "listing-toggle", "offers-coaching-toggle"],
   },
   {
     key: "trainers.read",
@@ -180,9 +180,23 @@ export const PERMISSIONS = [
     key: "bookings.read",
     group: "bookings",
     name: "View bookings",
-    routes: ["/bookings", "/bookings/[id]"],
+    // Subscriptions and coaching are read through RLS on bookings.read (20261024032759,
+    // 20261024035357); no key of their own.
+    routes: ["/bookings", "/bookings/[id]", "/subscriptions", "/subscriptions/[id]", "/coaching", "/coaching/[id]"],
     apis: [],
-    components: ["booking-table", "booking-filters", "booking-detail", "booking-timeline", "booking-dispute-card"],
+    components: [
+      "booking-table",
+      "booking-filters",
+      "booking-detail",
+      "booking-timeline",
+      "booking-dispute-card",
+      "subscription-table",
+      "subscription-filters",
+      "subscription-detail",
+      "coaching-table",
+      "coaching-filters",
+      "coaching-detail",
+    ],
   },
   {
     key: "bookings.address",
@@ -198,7 +212,8 @@ export const PERMISSIONS = [
     name: "Cancel bookings and resolve disputes",
     routes: [],
     apis: [],
-    components: ["cancel-booking-dialog", "resolve-dispute-dialog"],
+    // cancel_subscription and end_coaching check this key in admin mode.
+    components: ["cancel-booking-dialog", "resolve-dispute-dialog", "cancel-subscription-dialog", "end-coaching-dialog"],
   },
   {
     key: "payments.read",
@@ -241,6 +256,8 @@ export const PERMISSIONS = [
       "programme-plan-sheet",
       "programme-day-list",
       "programme-day-editor",
+      // custom_plans_select_admin and its days and items admit catalogue.manage.
+      "custom-plan-list",
     ],
   },
   {
@@ -316,6 +333,8 @@ const NAV_LABELS: Readonly<Record<string, string>> = {
   "/gyms": "Gyms",
   "/support": "Support",
   "/bookings": "Bookings",
+  "/subscriptions": "Subscriptions",
+  "/coaching": "Coaching",
   "/payments": "Payments",
   "/reviews": "Reviews",
   "/catalogue": "Catalogue",

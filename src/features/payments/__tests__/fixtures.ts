@@ -10,6 +10,8 @@ export function paymentRow(overrides: Partial<PaymentListRow> = {}): PaymentList
   return {
     id: "a1111111-1111-4111-8111-111111111111",
     booking_id: BOOKING_ID,
+    subscription_period_id: null,
+    coaching_period_id: null,
     provider: "razorpay",
     order_id: "order_Paid0001",
     payment_id: "pay_Paid0001",

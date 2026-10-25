@@ -139,6 +139,8 @@ describe("navItems", () => {
       "/my-gym/bookings",
       "/support",
       "/bookings",
+      "/subscriptions",
+      "/coaching",
       "/payments",
       "/reviews",
       "/catalogue",
@@ -187,7 +189,13 @@ describe("payments routes and nav", () => {
 
   it("shows Payments under Bookings for a session holding payments.read", () => {
     const items = sessionNavItems(["bookings.read", "payments.read"], { managesGym: false });
-    expect(items.map((item) => item.href)).toEqual(["/dashboard", "/bookings", "/payments"]);
+    expect(items.map((item) => item.href)).toEqual([
+      "/dashboard",
+      "/bookings",
+      "/subscriptions",
+      "/coaching",
+      "/payments",
+    ]);
     expect(items.find((item) => item.href === "/payments")).toEqual({
       href: "/payments",
       label: "Payments",
@@ -199,6 +207,38 @@ describe("payments routes and nav", () => {
     for (const permissions of [["bookings.read"], ["bookings.read", "payments.manage"], []]) {
       const hrefs = sessionNavItems(permissions, { managesGym: false }).map((item) => item.href);
       expect(hrefs).not.toContain("/payments");
+    }
+  });
+});
+
+describe("subscriptions and coaching routes and nav", () => {
+  it("gates both lists and details on bookings.read, with no key of their own", () => {
+    for (const path of ["/subscriptions", "/subscriptions/abc", "/coaching", "/coaching/abc"]) {
+      expect(routePermission(path), path).toEqual({ kind: "permission", key: "bookings.read" });
+    }
+    expect(PERMISSIONS).toHaveLength(28);
+  });
+
+  it("shows Subscriptions and Coaching after Bookings for a session holding bookings.read", () => {
+    const items = sessionNavItems(["bookings.read"], { managesGym: false });
+    expect(items.map((item) => item.href)).toEqual(["/dashboard", "/bookings", "/subscriptions", "/coaching"]);
+    expect(items.find((item) => item.href === "/subscriptions")).toEqual({
+      href: "/subscriptions",
+      label: "Subscriptions",
+      permission: "bookings.read",
+    });
+    expect(items.find((item) => item.href === "/coaching")).toEqual({
+      href: "/coaching",
+      label: "Coaching",
+      permission: "bookings.read",
+    });
+  });
+
+  it("hides both from a session without bookings.read", () => {
+    for (const permissions of [["payments.read"], ["bookings.cancel", "catalogue.manage"], []]) {
+      const hrefs = sessionNavItems(permissions, { managesGym: false }).map((item) => item.href);
+      expect(hrefs).not.toContain("/subscriptions");
+      expect(hrefs).not.toContain("/coaching");
     }
   });
 });

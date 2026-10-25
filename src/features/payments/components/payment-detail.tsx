@@ -7,8 +7,9 @@ import { formatSessionRange } from "@/features/bookings/format";
 import { CopyIdButton } from "@/features/payments/components/copy-id-button";
 import { PaymentStateBadge } from "@/features/payments/components/payment-state-badge";
 import { formatRawEvent } from "@/features/payments/format";
-import type { PaymentBookingsState } from "@/features/payments/api";
+import type { PaymentBookingsState, PaymentPurpose } from "@/features/payments/api";
 import { permittedHref } from "@/features/support/format";
+import { missingPermissionMessage } from "@/features/users/format";
 import type { PaymentBooking } from "@/lib/db/payments";
 import type { PaymentRow } from "@/types/database";
 
@@ -112,17 +113,48 @@ function BookingSummary({
   );
 }
 
+/** A subscription period or coaching month payment: what it pays for, linked when readable. */
+function PurposeSummary({
+  purpose,
+  permissions,
+}: {
+  purpose: Exclude<PaymentPurpose, { kind: "booking" }>;
+  permissions: readonly string[];
+}) {
+  const parentId = purpose.kind === "subscription" ? purpose.subscriptionId : purpose.coachingId;
+  const path = purpose.kind === "subscription" ? "/subscriptions" : "/coaching";
+  const href = parentId ? permittedHref(permissions, `${path}/${parentId}`) : null;
+  const label = purpose.kind === "subscription" ? "A subscription period" : "A coaching month";
+  return (
+    <Card id="payment-booking" title="Paid for">
+      <p className="text-sm">
+        {label}.{" "}
+        {href ? (
+          <MaybeLink href={href}>{purpose.kind === "subscription" ? "Open the subscription" : "Open the coaching"}</MaybeLink>
+        ) : (
+          <span className="text-muted-foreground">
+            {missingPermissionMessage("bookings.read", purpose.kind === "subscription" ? "The subscription" : "The coaching")}
+          </span>
+        )}
+      </p>
+    </Card>
+  );
+}
+
 /**
  * Every column of the payment, the booking it pays for, and the stored Razorpay event behind
  * a disclosure. Gated by payments.read; the booking summary needs bookings.read.
  */
 export function PaymentDetail({
   payment,
+  purpose = { kind: "booking" },
   booking,
   bookingState,
   permissions,
 }: {
   payment: PaymentRow;
+  /** What a payment without a booking pays for; a booking payment by default. */
+  purpose?: PaymentPurpose;
   booking: PaymentBooking | null;
   bookingState: PaymentBookingsState;
   permissions: readonly string[];
@@ -177,12 +209,16 @@ export function PaymentDetail({
               </Row>
             </dl>
           </Card>
-          <BookingSummary
-            bookingId={payment.booking_id}
-            booking={booking}
-            state={bookingState}
-            permissions={permissions}
-          />
+          {purpose.kind !== "booking" ? (
+            <PurposeSummary purpose={purpose} permissions={permissions} />
+          ) : payment.booking_id ? (
+            <BookingSummary
+              bookingId={payment.booking_id}
+              booking={booking}
+              state={bookingState}
+              permissions={permissions}
+            />
+          ) : null}
         </div>
       </div>
       <Card id="payment-raw" title="Raw event">

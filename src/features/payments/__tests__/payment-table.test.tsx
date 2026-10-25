@@ -6,7 +6,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 import { PaymentFilters } from "@/features/payments/components/payment-filters";
 import { PaymentTable } from "@/features/payments/components/payment-table";
 import { EMPTY_PAYMENT_FILTERS, PAYMENT_STATE_LABELS, parsePaymentFilters } from "@/features/payments/schemas";
-import { BOOKING_ID, NOW, paymentBooking, paymentsInEveryState } from "./fixtures";
+import { BOOKING_ID, NOW, paymentBooking, paymentRow, paymentsInEveryState } from "./fixtures";
 
 afterEach(cleanup);
 
@@ -104,5 +104,24 @@ describe("PaymentFilters", () => {
     expect(screen.getByRole("link", { name: "Needs attention" }).getAttribute("href")).toBe("/payments?attention=yes");
     expect((screen.getByLabelText("From") as HTMLInputElement).value).toBe("2026-09-23");
     expect((screen.getByLabelText("To") as HTMLInputElement).value).toBe("2026-10-22");
+  });
+});
+
+describe("PaymentTable with period payments", () => {
+  it("names a subscription period or coaching month payment instead of a booking", () => {
+    render(
+      <PaymentTable
+        rows={[
+          paymentRow({ id: "p1", order_id: "order_Sub", booking_id: null, subscription_period_id: "s1" }),
+          paymentRow({ id: "p2", order_id: "order_Coach", booking_id: null, coaching_period_id: "c1" }),
+        ]}
+        bookings={{ visible: true, bookings: {} }}
+        links={LINKS}
+        now={NOW}
+        filtered={false}
+      />,
+    );
+    expect(within(rowOf("order_Sub")).getAllByText("Subscription period")).toHaveLength(3);
+    expect(within(rowOf("order_Coach")).getAllByText("Coaching month")).toHaveLength(3);
   });
 });

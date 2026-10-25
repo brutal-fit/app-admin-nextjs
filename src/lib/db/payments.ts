@@ -32,7 +32,7 @@ const LIVE_STATES: readonly PaymentState[] = ["created", "paid", "refund_pending
 export type PaymentListRow = Omit<PaymentRow, "raw">;
 
 const LIST_COLUMNS =
-  "id, booking_id, provider, order_id, payment_id, amount_inr, currency, state, signature_verified, refund_id, refund_amount_inr, refund_reason, refund_attempts, last_event_id, created_at, updated_at";
+  "id, booking_id, subscription_period_id, coaching_period_id, provider, order_id, payment_id, amount_inr, currency, state, signature_verified, refund_id, refund_amount_inr, refund_reason, refund_attempts, last_event_id, created_at, updated_at";
 const DETAIL_COLUMNS = `${LIST_COLUMNS}, raw` as const;
 
 /**
@@ -142,13 +142,16 @@ export type PaymentBooking = {
   gymName: string | null;
 };
 
-/** The bookings behind the given payments, keyed by booking id (booking_details, bookings.read). */
+/**
+ * The bookings behind the given payments, keyed by booking id (booking_details, bookings.read).
+ * A subscription period or coaching month payment has no booking; its null is skipped.
+ */
 export async function listPaymentBookings(
   client: AppSupabaseClient,
-  bookingIds: readonly string[],
+  bookingIds: readonly (string | null)[],
 ): Promise<Map<string, PaymentBooking>> {
   const bookings = new Map<string, PaymentBooking>();
-  const ids = [...new Set(bookingIds)];
+  const ids = [...new Set(bookingIds.filter((id): id is string => id !== null))];
   if (ids.length === 0) return bookings;
   const { data, error } = await client
     .from(TABLE.bookingDetails)
@@ -172,6 +175,21 @@ export async function listPaymentBookings(
     });
   }
   return bookings;
+}
+
+/**
+ * The given payments by id (payments.read; without it the table returns nothing). Used to
+ * read what a cancelled subscription or ended coaching queued for refund.
+ */
+export async function listPaymentsByIds(
+  client: AppSupabaseClient,
+  ids: readonly string[],
+): Promise<PaymentListRow[]> {
+  const unique = [...new Set(ids)];
+  if (unique.length === 0) return [];
+  const { data, error } = await client.from(TABLE.payments).select(LIST_COLUMNS).in("id", unique);
+  if (error) throw toAppError(error);
+  return data;
 }
 
 // Enough for every booking of the clients a phone search finds at today's scale.

@@ -4,7 +4,8 @@
  * trainer profiles, services, bookings, booking locations, support cases, catalogue, platform
  * settings, announcements, programme days and items, trainer listings, gyms, gym staff, booking
  * details, payments) and the admin and gym functions up to 20261022035524 that the panel calls,
- * plus the request and reply of the `refund` Edge Function (20261022151245). Replace this whole
+ * plus the request and reply of the `refund` Edge Function (20261022151245), plus subscriptions
+ * (20261024032759) and coaching and custom plans (20261024035357). Replace this whole
  * file with
  * the generated version once the migration is applied:
  *
@@ -216,7 +217,14 @@ export type PaymentState =
  */
 export type PaymentRow = {
   id: string;
-  booking_id: string;
+  /**
+   * Null on a subscription period or coaching month payment (20261024032759,
+   * 20261024035357): exactly one of booking_id, subscription_period_id and
+   * coaching_period_id is set (payments_one_target).
+   */
+  booking_id: string | null;
+  subscription_period_id: string | null;
+  coaching_period_id: string | null;
   provider: string;
   order_id: string;
   payment_id: string | null;
@@ -441,6 +449,9 @@ export type BookingDetailsRow = {
   gym_id: string | null;
   gym_name: string | null;
   gym_address_text: string | null;
+  payment_status: PaymentStatus;
+  /** The subscription a session belongs to (20261024032759); null for a single booking. */
+  subscription_id: string | null;
 };
 
 /** One row of admin_list_reviews (20261019000500), needs reviews.moderate. */
@@ -486,6 +497,8 @@ export type TrainerProfileRow = {
   approved_online_rate_inr: number | null;
   pricing_acknowledged_at: string | null;
   published: boolean;
+  /** The trainer can be picked as a coach for library programmes (20261024035357). */
+  offers_coaching: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -662,6 +675,156 @@ export type MyAccessJson = {
   permissions: string[];
 };
 
+/** public.subscription_period (20261024032759_subscriptions.sql): 1, 4 or 12 weeks. */
+export type SubscriptionPeriodKind = "week" | "month" | "quarter";
+/** public.subscription_status (20261024032759_subscriptions.sql). */
+export type SubscriptionStatus = "requested" | "active" | "paused" | "cancelled" | "expired";
+/** subscription_periods.status and coaching_periods.status: how the period's payment stands. */
+export type PeriodStatus = "unpaid" | "paid" | "refund_pending" | "refunded" | "lapsed";
+
+/**
+ * public.subscriptions (20261024032759). Admins read every row with bookings.read
+ * (subscriptions_select_admin); the server functions own every change.
+ */
+export type SubscriptionRow = {
+  id: string;
+  client_id: string;
+  trainer_id: string;
+  service_id: string;
+  mode: SessionMode;
+  sessions_per_week: number;
+  period: SubscriptionPeriodKind;
+  weeks: number;
+  /** Dates (YYYY-MM-DD), India time. */
+  starts_on: string;
+  ends_on: string;
+  status: SubscriptionStatus;
+  session_price_inr: number;
+  discount_pct: number;
+  period_price_inr: number;
+  credits: number;
+  cancellation_reason: string | null;
+  cancelled_by: CancelledBy | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** public.subscription_slots: the weekly slots (weekday 1 Monday to 7 Sunday, minute of day). */
+export type SubscriptionSlotRow = {
+  subscription_id: string;
+  weekday: number;
+  start_minute: number;
+};
+
+/** public.subscription_periods: one paid block of the subscription (bookings.read). */
+export type SubscriptionPeriodRow = {
+  id: string;
+  subscription_id: string;
+  seq: number;
+  starts_on: string;
+  ends_on: string;
+  price_inr: number;
+  payment_id: string | null;
+  status: PeriodStatus;
+  reminder_sent_at: string | null;
+  created_at: string;
+};
+
+export type CoachingStatus = "requested" | "active" | "cancelled" | "expired";
+export type CoachingCancelledBy = "client" | "coach" | "admin";
+
+/** public.programme_coaching (20261024035357): a coach on a library programme (bookings.read). */
+export type ProgrammeCoachingRow = {
+  id: string;
+  client_id: string;
+  coach_id: string;
+  plan_id: string;
+  enrolment_id: string | null;
+  status: CoachingStatus;
+  fee_inr: number;
+  starts_on: string;
+  ends_on: string;
+  /** The coaching chat; null until the first month is paid. */
+  conversation_id: string | null;
+  cancellation_reason: string | null;
+  cancelled_by: CoachingCancelledBy | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** public.coaching_periods: one month of coaching and its payment (bookings.read). */
+export type CoachingPeriodRow = {
+  id: string;
+  coaching_id: string;
+  seq: number;
+  starts_on: string;
+  ends_on: string;
+  price_inr: number;
+  payment_id: string | null;
+  status: PeriodStatus;
+  reminder_sent_at: string | null;
+  created_at: string;
+};
+
+export type CustomPlanStatus = "draft" | "active" | "ended";
+
+/** public.custom_plans (20261024035357): a trainer's plan for one client (catalogue.manage). */
+export type CustomPlanRow = {
+  id: string;
+  trainer_id: string;
+  client_id: string;
+  subscription_id: string | null;
+  coaching_id: string | null;
+  title: string;
+  weeks: number;
+  status: CustomPlanStatus;
+  notes: string | null;
+  /** Monday (India time) of the week it was published; null while a draft. */
+  starts_on: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** public.custom_plan_days: one day of a custom plan (week 1 to 12, weekday 1 to 7). */
+export type CustomPlanDayRow = {
+  id: string;
+  plan_id: string;
+  week: number;
+  weekday: number;
+  title: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** public.custom_plan_items: one exercise of a custom day; reps or a duration, never both. */
+export type CustomPlanItemRow = {
+  id: string;
+  day_id: string;
+  exercise_id: string;
+  seq: number;
+  sets: number;
+  reps: number | null;
+  duration_seconds: number | null;
+  rest_seconds: number;
+  notes: string | null;
+};
+
+/** public.exercises: the library (any signed-in account reads it). Only the columns the panel reads. */
+export type ExerciseNameRow = {
+  id: string;
+  name: string;
+};
+
+/**
+ * public.programme_plans: active plans are readable when signed in (programme_plans_select_active).
+ * Only the columns the panel reads.
+ */
+export type ProgrammePlanTitleRow = {
+  id: string;
+  title: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -804,6 +967,66 @@ export type Database = {
       };
       gym_staff: {
         Row: GymStaffRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      subscriptions: {
+        Row: SubscriptionRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      subscription_slots: {
+        Row: SubscriptionSlotRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      subscription_periods: {
+        Row: SubscriptionPeriodRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      programme_coaching: {
+        Row: ProgrammeCoachingRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      coaching_periods: {
+        Row: CoachingPeriodRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      custom_plans: {
+        Row: CustomPlanRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      custom_plan_days: {
+        Row: CustomPlanDayRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      custom_plan_items: {
+        Row: CustomPlanItemRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      exercises: {
+        Row: ExerciseNameRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      programme_plans: {
+        Row: ProgrammePlanTitleRow;
         Insert: never;
         Update: never;
         Relationships: [];
@@ -1234,6 +1457,19 @@ export type Database = {
         Args: { p_gym: string };
         Returns: Json;
       };
+      /**
+       * Admin mode needs bookings.cancel and a reason up to 300 characters; returns the row
+       * (20261024032759). Refunds are queued on the periods' payments.
+       */
+      cancel_subscription: {
+        Args: { p_id: string; p_reason?: string | null };
+        Returns: SubscriptionRow;
+      };
+      /** Admin mode needs bookings.cancel and a reason up to 300 characters (20261024035357). */
+      end_coaching: {
+        Args: { p_id: string; p_reason: string };
+        Returns: ProgrammeCoachingRow;
+      };
     };
     Enums: {
       user_role: UserRole;
@@ -1252,6 +1488,8 @@ export type Database = {
       programme_stage: ProgrammeStage;
       programme_item_kind: ProgrammeItemKind;
       gym_status: GymStatus;
+      subscription_period: SubscriptionPeriodKind;
+      subscription_status: SubscriptionStatus;
     };
     CompositeTypes: { [_ in never]: never };
   };

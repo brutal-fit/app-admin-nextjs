@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { AccountStatusControl } from "@/features/users/components/account-status-control";
 import { GrantTrainerAccess } from "@/features/users/components/grant-trainer-access";
 import { loadEnrolments } from "@/features/programmes/api";
+import { CustomPlanList } from "@/features/coaching/components/custom-plan-list";
+import { loadCustomPlans } from "@/features/coaching/api";
 import { UserAuditList } from "@/features/users/components/user-audit-list";
 import { UserEnrolments } from "@/features/users/components/user-enrolments";
 import { UserOverview } from "@/features/users/components/user-overview";
@@ -64,14 +66,28 @@ async function loadUserEnrolments(userId: string): ReturnType<typeof loadEnrolme
   }
 }
 
+// Settles on its own like the enrolments; needs catalogue.manage.
+async function loadUserCustomPlans(
+  access: Parameters<typeof loadCustomPlans>[1],
+  userId: string,
+): ReturnType<typeof loadCustomPlans> {
+  try {
+    const supabase = await createSupabaseServerClient();
+    return await loadCustomPlans(supabase, access, { clientId: userId });
+  } catch (error) {
+    return { kind: "error", reason: toAppError(error).message };
+  }
+}
+
 const BACK = { href: "/users", label: "Back to users" };
 
 export default async function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const access = await requireRoutePermission("/users/[id]");
   const { id } = await params;
-  const [result, enrolments] = await Promise.all([
+  const [result, enrolments, customPlans] = await Promise.all([
     loadUser(id),
     loadUserEnrolments(id),
+    loadUserCustomPlans(access, id),
   ]);
 
   if (!result.ok) {
@@ -156,6 +172,13 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
         error={enrolments.ok ? null : enrolments.error}
         permissions={access.permissions}
       />
+
+      <section aria-labelledby="user-custom-plans" className="flex max-w-4xl flex-col gap-3">
+        <h2 id="user-custom-plans" className="text-lg font-semibold">
+          Custom plans
+        </h2>
+        <CustomPlanList state={customPlans} side="client" permissions={access.permissions} />
+      </section>
 
       <section aria-labelledby="user-roles" className="flex max-w-2xl flex-col gap-4">
         <h2 id="user-roles" className="text-lg font-semibold">

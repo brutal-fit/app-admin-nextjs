@@ -164,6 +164,8 @@ const bookingRowSchema = z.object({
   arrived_at: text,
   // Set on a gym booking (20261022035524); optional so an older reply still parses.
   gym_id: text,
+  // Set on a subscription session (20261024032759); optional so an older reply still parses.
+  subscription_id: text,
   created_at: z.string(),
   updated_at: z.string(),
 });
@@ -216,6 +218,8 @@ export type BookingDetail = {
   booking: BookingRow;
   /** The gym of a gym booking; null for a booking with an independent trainer. */
   gymId: string | null;
+  /** The subscription this session belongs to; null for a single booking. */
+  subscriptionId: string | null;
   client: BookingParty | null;
   /** Null on a gym booking the gym has not allotted yet. */
   trainer: BookingParty | null;
@@ -243,7 +247,7 @@ export async function getBookingDetail(client: AppSupabaseClient, id: string): P
     throw new AppError("UNKNOWN", "The booking came back in a shape the panel does not know.");
   }
   const detail = parsed.data;
-  const { gym_id: gymId, ...booking } = detail.booking;
+  const { gym_id: gymId, subscription_id: subscriptionId, ...booking } = detail.booking;
   const party = (value: z.output<typeof partySchema>): BookingParty | null =>
     value
       ? { id: value.id, name: value.name ?? null, avatar: toAvatarRef(value.avatar_path, value.avatar_preset) }
@@ -258,6 +262,7 @@ export async function getBookingDetail(client: AppSupabaseClient, id: string): P
       arrived_at: booking.arrived_at ?? null,
     },
     gymId: gymId ?? null,
+    subscriptionId: subscriptionId ?? null,
     client: party(detail.client),
     trainer: party(detail.trainer),
     cancelledBy: detail.cancelled_by ?? null,

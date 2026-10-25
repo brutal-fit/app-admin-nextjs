@@ -156,3 +156,79 @@ describe.each([
     expect(showToast).toHaveBeenCalledWith("error", "Use true or false.");
   });
 });
+
+function entryFor(key: string, value: unknown): SettingEntry {
+  const definition = SETTING_DEFINITIONS.find((item) => item.key === key);
+  if (!definition) throw new Error(`${key} has no definition`);
+  return {
+    definition,
+    value: value === undefined ? null : (value as SettingEntry["value"]),
+    description: definition.description,
+    updatedAt: value === undefined ? null : "2026-10-24T10:00:00Z",
+    updatedByName: null,
+  };
+}
+
+describe.each([
+  { key: "subscriptions.enabled" as const, label: "Subscriptions" },
+  { key: "coaching.enabled" as const, label: "Coaching" },
+])("SettingForm for $key", ({ key, label }) => {
+  it("renders a switch and saves the toggled value", async () => {
+    render(<SettingForm entry={entryFor(key, true)} />);
+    const toggle = screen.getByRole("switch", { name: label });
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(toggle);
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(setSettingAction).toHaveBeenCalledWith({ key, value: false }));
+  });
+});
+
+describe.each([
+  { key: "subscriptions.discount_month_pct" as const, label: "4-week subscription discount (percent)" },
+  { key: "subscriptions.discount_quarter_pct" as const, label: "12-week subscription discount (percent)" },
+])("SettingForm for $key", ({ key, label }) => {
+  it("shows the stored percent and saves a new whole number", async () => {
+    render(<SettingForm entry={entryFor(key, 10)} />);
+    const input = screen.getByLabelText(label) as HTMLInputElement;
+    expect(input.value).toBe("10");
+    expect(screen.getByText("A whole number of percent from 0 to 50.")).toBeTruthy();
+    fireEvent.change(input, { target: { value: "15" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(setSettingAction).toHaveBeenCalledWith({ key, value: 15 }));
+  });
+
+  it("refuses a value over 50 without calling the server", async () => {
+    render(<SettingForm entry={entryFor(key, 10)} />);
+    fireEvent.change(screen.getByLabelText(label), { target: { value: "60" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect((await screen.findByRole("alert")).textContent).toMatch(/at most 50/);
+    expect(setSettingAction).not.toHaveBeenCalled();
+  });
+});
+
+describe("SettingForm for coaching.fee_multiplier", () => {
+  const label = "Coaching fee multiplier (x session price)";
+
+  it("shows the stored multiplier with one decimal and saves a new one", async () => {
+    render(<SettingForm entry={entryFor("coaching.fee_multiplier", 1)} />);
+    const input = screen.getByLabelText(label) as HTMLInputElement;
+    expect(input.value).toBe("1.0");
+    fireEvent.change(input, { target: { value: "1.5" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(setSettingAction).toHaveBeenCalledWith({ key: "coaching.fee_multiplier", value: 1.5 }),
+    );
+  });
+
+  it.each([
+    ["3.5", /at most 3/],
+    ["0.4", /at least 0.5/],
+    ["1.25", /steps of 0.1/],
+  ])("refuses %s without calling the server", async (value, message) => {
+    render(<SettingForm entry={entryFor("coaching.fee_multiplier", 1)} />);
+    fireEvent.change(screen.getByLabelText(label), { target: { value } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect((await screen.findByRole("alert")).textContent).toMatch(message);
+    expect(setSettingAction).not.toHaveBeenCalled();
+  });
+});

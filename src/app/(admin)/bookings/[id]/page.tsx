@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { Repeat } from "@/components/icons";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatusPulse } from "@/components/motion/status-pulse";
 import { BookingAddressCard } from "@/features/bookings/components/booking-address-card";
@@ -55,6 +57,17 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
           </StatusPulse>
         }
         description={<p>{formatSessionRange(booking.start_at, booking.end_at)}, India time.</p>}
+        actions={
+          detail.subscriptionId ? (
+            <Link
+              href={`/subscriptions/${detail.subscriptionId}`}
+              className="focus-ring inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-accent"
+            >
+              <Repeat size={14} aria-hidden="true" />
+              Part of subscription
+            </Link>
+          ) : null
+        }
       />
 
       <BookingDetail detail={detail} gym={gym} permissions={access.permissions} />
